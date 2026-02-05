@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Monitor</title>
+    <script src="/libs/socket.io/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .user-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.6rem 1.8rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .connections-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .connections-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid #f0f0f0;
+        }
+
+        .connections-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        .connection-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .connection-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.2rem;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .connection-table th:first-child {
+            border-top-left-radius: 10px;
+        }
+
+        .connection-table th:last-child {
+            border-top-right-radius: 10px;
+        }
+
+        .connection-table td {
+            padding: 1.2rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .connection-table tr:hover {
+            background: rgba(102, 126, 234, 0.08);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-online {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-offline {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #999;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #667eea;
+            font-size: 1.2rem;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .role-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .role-admin { background: #dbeafe; color: #1e40af; }
+        .role-viewer { background: #f3e8ff; color: #6b21a8; }
+        .role-transfer { background: #fef3c7; color: #92400e; }
+        .role-pdf { background: #fee2e2; color: #991b1b; }
+        .role-network { background: #d1fae5; color: #065f46; }
+        .role-visitor { background: #f1f5f9; color: #475569; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌐 Network Monitor</h1>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <button onclick="showPCInfo()" class="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition font-semibold">
+                💻 PC Info
+            </button>
+            <div class="user-badge" id="user-info">Welcome</div>
+            <button class="logout-btn" id="logout-btn">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value" id="total-visitors">0</div>
+                <div class="stat-label">Total Homepage Visitors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔗</div>
+                <div class="stat-value" id="active-sessions">0</div>
+                <div class="stat-label">Active Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔐</div>
+                <div class="stat-value" id="logged-users">0</div>
+                <div class="stat-label">Logged In Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="data-requests">0</div>
+                <div class="stat-label">Data Requests (Last Hour)</div>
+            </div>
+        </div>
+
+        <div class="connections-card">
+            <div class="connections-header">
+                <div class="connections-title">Active Sessions</div>
+                <button class="refresh-btn" onclick="fetchSessions()">🔄 Refresh Data</button>
+            </div>
+            <div class="table-wrapper">
+                <table class="connection-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Session ID</th>
+                            <th>IP Address & PC Info</th>
+                            <th>Login Time</th>
+                            <th>Last Activity</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessions-body">
+                        <tr>
+                            <td colspan="7">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    Loading session data...
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let sessionData = [];
+        let pcInfo = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthentication();
+            collectPCInfo();
+            fetchSessions();
+            loadVisitorCount();
+            setInterval(fetchSessions, 10000); // Refresh every 10 seconds
+        });
+
+        function collectPCInfo() {
+            // Collect PC/Browser information
+            pcInfo = {
+                platform: navigator.platform,
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                languages: navigator.languages.join(', '),
+                cookiesEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                screenWidth: screen.width,
+                screenHeight: screen.height,
+                screenColorDepth: screen.colorDepth,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                memory: navigator.deviceMemory || 'N/A',
+                cores: navigator.hardwareConcurrency || 'N/A',
+                browser: getBrowserInfo(),
+                os: getOSInfo()
+            };
+        }
+
+        function getBrowserInfo() {
+            const ua = navigator.userAgent;
+            if (ua.includes('Firefox')) return 'Firefox';
+            if (ua.includes('Chrome') && !ua.includes('Edg')) return 'Chrome';
+            if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+            if (ua.includes('Edg')) return 'Edge';
+            if (ua.includes('Opera') || ua.includes('OPR')) return 'Opera';
+            return 'Unknown';
+        }
+
+        function getOSInfo() {
+            const ua = navigator.userAgent;
+            if (ua.includes('Win')) return 'Windows';
+            if (ua.includes('Mac')) return 'macOS';
+            if (ua.includes('Linux')) return 'Linux';
+            if (ua.includes('Android')) return 'Android';
+            if (ua.includes('iOS')) return 'iOS';
+            return 'Unknown';
+        }
+
+        async function checkAuthentication() {
+            try {
+                const storedUser = sessionStorage.getItem('user');
+                if (storedUser) {
+                    const user = JSON.parse(storedUser);
+                    if (user.role === 'network') {
+                        document.getElementById('user-info').textContent = `Welcome, ${user.username}`;
+                        return;
+                    }
+                }
+
+                const response = await fetch('/api/session');
+                const result = await response.json();
+
+                if (!response.ok || !result.success || result.user.role !== 'network') {
+                    console.warn('Not authenticated as network user, redirecting...');
+                    sessionStorage.removeItem('user');
+                    window.location.href = '/homepage.html';
+                    return;
+                }
+
+                sessionStorage.setItem('user', JSON.stringify(result.user));
+                document.getElementById('user-info').textContent = `Welcome, ${result.user.username}`;
+            } catch (error) {
+                console.error('Authentication check failed:', error);
+                sessionStorage.removeItem('user');
+                window.location.href = '/homepage.html';
+            }
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            const response = await fetch('/api/logout', { method: 'POST' });
+            if (response.ok) {
+                sessionStorage.removeItem('user');
+                window.location.href = '/homepage.html';
+            }
+        });
+
+        async function loadVisitorCount() {
+            try {
+                const response = await fetch('/api/public/visitor-count-display');
+                const data = await response.json();
+                document.getElementById('total-visitors').textContent = data.count || 0;
+            } catch (error) {
+                console.error('Error loading visitor count:', error);
+            }
+        }
+
+        async function fetchSessions() {
+            try {
+                const response = await fetch('/api/network/sessions');
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch session data: ' + response.status);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const sessions = result.sessions || [];
+                    const activityLogs = result.activityLogs || [];
+                    
+                    // Update stats
+                    document.getElementById('active-sessions').textContent = sessions.filter(s => s.is_active).length;
+                    document.getElementById('logged-users').textContent = sessions.filter(s => s.username !== 'visitor').length;
+                    document.getElementById('data-requests').textContent = activityLogs.length;
+
+                    // Display sessions
+                    const tbody = document.getElementById('sessions-body');
+                    if (sessions.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                                        <p>No active sessions found</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tbody.innerHTML = sessions.map(session => {
+                            const loginTime = new Date(session.login_time).toLocaleString();
+                            const lastActivity = new Date(session.last_activity).toLocaleString();
+                            const isCurrentUser = session.username === JSON.parse(sessionStorage.getItem('user') || '{}').username;
+                            
+                            // Handle pc_info - it's already parsed by MySQL
+                            let pcInfo = {};
+                            if (session.pc_info) {
+                                if (typeof session.pc_info === 'string') {
+                                    try {
+                                        pcInfo = JSON.parse(session.pc_info);
+                                    } catch (e) {
+                                        console.error('Error parsing pc_info:', e);
+                                        pcInfo = {};
+                                    }
+                                } else {
+                                    pcInfo = session.pc_info;
+                                }
+                            }
+                            
+                            // Create PC info summary
+                            const pcSummary = pcInfo.os && pcInfo.browser 
+                                ? `<br><small style="color: #6366f1;">💻 ${pcInfo.os} | ${pcInfo.browser}</small>`
+                                : '';
+                            
+                            return `
+                                <tr ${isCurrentUser ? 'style="background-color: rgba(59, 130, 246, 0.1);"' : ''}>
+                                    <td><strong>${session.username || 'Unknown'}</strong> ${isCurrentUser ? '(You)' : ''}</td>
+                                    <td><span class="role-badge role-${session.user_role || 'visitor'}">${session.user_role || 'visitor'}</span></td>
+                                    <td style="font-size: 0.85rem;">${session.session_id.substring(0, 16)}...</td>
+                                    <td>
+                                        <div>${session.ip_address}</div>
+                                        ${pcSummary}
+                                    </td>
+                                    <td>${loginTime}</td>
+                                    <td>${lastActivity}</td>
+                                    <td>${session.is_active ? '<span style="color: #10b981;">● Active</span>' : '<span style="color: #ef4444;">● Inactive</span>'}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                } else {
+                    throw new Error(result.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error fetching sessions:', error);
+                const tbody = document.getElementById('sessions-body');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <div style="font-size: 3rem; margin-bottom: 1rem; color: #ef4444;">⚠️</div>
+                                <p>Error loading session data: ${error.message}</p>
+                                <button onclick="fetchSessions()" class="bg-blue-600 text-white px-4 py-2 rounded-lg mt-4 hover:bg-blue-700">
+                                    Retry
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        window.showSessionDetails = function(session) {
+            // Handle pc_info - it's already parsed by MySQL
+            let pcInfo = {};
+            if (session.pc_info) {
+                if (typeof session.pc_info === 'string') {
+                    try {
+                        pcInfo = JSON.parse(session.pc_info);
+                    } catch (e) {
+                        console.error('Error parsing pc_info:', e);
+                        pcInfo = {};
+                    }
+                } else {
+                    pcInfo = session.pc_info;
+                }
+            }
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Session Details</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-3xl">&times;</button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg">
+                                <h3 class="font-semibold text-blue-800 dark:text-blue-200 mb-2">👤 User Information</h3>
+                                <p class="text-sm"><strong>Username:</strong> ${session.username || 'N/A'}</p>
+                                <p class="text-sm"><strong>Role:</strong> ${session.user_role || 'N/A'}</p>
+                                <p class="text-sm"><strong>IP Address:</strong> ${session.ip_address}</p>
+                                <p class="text-sm"><strong>Session ID:</strong> ${session.session_id}</p>
+                            </div>
+                            
+                            <div class="bg-green-50 dark:bg-green-900 p-4 rounded-lg">
+                                <h3 class="font-semibold text-green-800 dark:text-green-200 mb-2">⏰ Activity Timeline</h3>
+                                <p class="text-sm"><strong>Login Time:</strong> ${new Date(session.login_time).toLocaleString()}</p>
+                                <p class="text-sm"><strong>Last Activity:</strong> ${new Date(session.last_activity).toLocaleString()}</p>
+                                <p class="text-sm"><strong>Status:</strong> ${session.is_active ? 'Active' : 'Inactive'}</p>
+                            </div>
+                            
+                            <div class="bg-purple-50 dark:bg-purple-900 p-4 rounded-lg">
+                                <h3 class="font-semibold text-purple-800 dark:text-purple-200 mb-2">💻 System Info</h3>
+                                <p class="text-sm"><strong>OS:</strong> ${pcInfo.os || 'N/A'}</p>
+                                <p class="text-sm"><strong>Browser:</strong> ${pcInfo.browser || 'N/A'}</p>
+                                <p class="text-sm"><strong>Platform:</strong> ${pcInfo.platform || 'N/A'}</p>
+                                <p class="text-sm"><strong>CPU Cores:</strong> ${pcInfo.cores || 'N/A'}</p>
+                            </div>
+                            
+                            <div class="bg-orange-50 dark:bg-orange-900 p-4 rounded-lg">
+                                <h3 class="font-semibold text-orange-800 dark:text-orange-200 mb-2">🖥️ Display & Device</h3>
+                                <p class="text-sm"><strong>Screen:</strong> ${pcInfo.screenWidth || 'N/A'}x${pcInfo.screenHeight || 'N/A'}</p>
+                                <p class="text-sm"><strong>Color Depth:</strong> ${pcInfo.screenColorDepth || 'N/A'}-bit</p>
+                                <p class="text-sm"><strong>Language:</strong> ${pcInfo.language || 'N/A'}</p>
+                                <p class="text-sm"><strong>Timezone:</strong> ${pcInfo.timezone || 'N/A'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-end">
+                            <button onclick="this.closest('.fixed').remove()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        };
+
+        // Show PC Info modal
+        window.showPCInfo = function() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">💻 PC Information</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-3xl">&times;</button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg">
+                                <h3 class="font-semibold text-blue-800 dark:text-blue-200 mb-2">🖥️ System</h3>
+                                <p class="text-sm"><strong>OS:</strong> ${pcInfo.os}</p>
+                                <p class="text-sm"><strong>Platform:</strong> ${pcInfo.platform}</p>
+                                <p class="text-sm"><strong>Cores:</strong> ${pcInfo.cores}</p>
+                                <p class="text-sm"><strong>Memory:</strong> ${pcInfo.memory} GB</p>
+                            </div>
+                            
+                            <div class="bg-green-50 dark:bg-green-900 p-4 rounded-lg">
+                                <h3 class="font-semibold text-green-800 dark:text-green-200 mb-2">🌐 Browser</h3>
+                                <p class="text-sm"><strong>Browser:</strong> ${pcInfo.browser}</p>
+                                <p class="text-sm"><strong>Language:</strong> ${pcInfo.language}</p>
+                                <p class="text-sm"><strong>Cookies:</strong> ${pcInfo.cookiesEnabled ? 'Enabled' : 'Disabled'}</p>
+                                <p class="text-sm"><strong>Online:</strong> ${pcInfo.onLine ? 'Yes' : 'No'}</p>
+                            </div>
+                            
+                            <div class="bg-purple-50 dark:bg-purple-900 p-4 rounded-lg">
+                                <h3 class="font-semibold text-purple-800 dark:text-purple-200 mb-2">🖼️ Display</h3>
+                                <p class="text-sm"><strong>Resolution:</strong> ${pcInfo.screenWidth}x${pcInfo.screenHeight}</p>
+                                <p class="text-sm"><strong>Color Depth:</strong> ${pcInfo.screenColorDepth}-bit</p>
+                                <p class="text-sm"><strong>Timezone:</strong> ${pcInfo.timezone}</p>
+                            </div>
+                            
+                            <div class="bg-orange-50 dark:bg-orange-900 p-4 rounded-lg">
+                                <h3 class="font-semibold text-orange-800 dark:text-orange-200 mb-2">🔧 Details</h3>
+                                <p class="text-sm"><strong>Languages:</strong> ${pcInfo.languages}</p>
+                                <p class="text-sm break-all"><strong>User Agent:</strong> ${pcInfo.userAgent.substring(0, 50)}...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-end">
+                            <button onclick="this.closest('.fixed').remove()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,492 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permission Management - Material Management Group</title>
+    <script src="/libs/tailwindcss/tailwindcss.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+    
+    <!-- Login Container -->
+    <div id="login-container" class="flex items-center justify-center min-h-screen">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg max-w-md w-full">
+            <h2 class="text-2xl font-bold text-center text-gray-800 dark:text-gray-100 mb-6">
+                Permission Management Login
+            </h2>
+            <form id="login-form" class="space-y-4">
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="Username"
+                    required
+                    class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Password"
+                    required
+                    class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                    type="submit"
+                    class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition"
+                >
+                    Login
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <a href="/index.html" class="text-blue-600 hover:underline text-sm">
+                    Back to Main Application
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permission Management Interface -->
+    <div id="permission-interface" class="hidden min-h-screen p-6">
+        <div class="max-w-7xl mx-auto">
+            <header class="flex justify-between items-center mb-8">
+                <div class="flex items-center gap-4">
+                    <img src="/logo-bg.png" alt="DRDO Logo" class="w-12 h-12 object-contain">
+                    <h1 class="text-3xl font-bold text-blue-800 dark:text-blue-200">
+                        Permission Management System
+                    </h1>
+                </div>
+                <div class="flex gap-2">
+                    <button id="refresh-permissions" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                        🔄 Refresh
+                    </button>
+                    <button id="logout-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <!-- Role Tabs -->
+            <div class="mb-6">
+                <div class="border-b border-gray-200 dark:border-gray-700">
+                    <nav class="flex space-x-8">
+                        <button id="viewer-tab" class="py-2 px-1 border-b-2 border-blue-500 text-blue-600 font-medium">
+                            Viewer Permissions
+                        </button>
+                        <button id="admin-tab" class="py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                            Admin Permissions
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Permission Categories -->
+            <div id="permission-content" class="space-y-6">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">User Role: <span id="current-role" class="text-blue-600">Viewer</span></h2>
+                        <div class="flex gap-2">
+                            <button id="enable-all" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                                Enable All
+                            </button>
+                            <button id="disable-all" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+                                Disable All
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Search and Filter -->
+                    <div class="mb-4">
+                        <input 
+                            type="text" 
+                            id="permission-search" 
+                            placeholder="Search permissions..." 
+                            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                    </div>
+
+                    <!-- Permission Categories -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        
+                        <!-- Basic View Permissions -->
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg mb-3 text-purple-600">📋 Basic Views</h3>
+                            <div class="space-y-2" id="basic-permissions">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- CRUD Operations -->
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg mb-3 text-red-600">✏️ CRUD Operations</h3>
+                            <div class="space-y-2" id="crud-permissions">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Analytics & Reports -->
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg mb-3 text-blue-600">📊 Analytics & Reports</h3>
+                            <div class="space-y-2" id="analytics-permissions">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Search & Filter -->
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg mb-3 text-green-600">🔍 Search & Filter</h3>
+                            <div class="space-y-2" id="search-permissions">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- System Features -->
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg mb-3 text-orange-600">⚙️ System Features</h3>
+                            <div class="space-y-2" id="system-permissions">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Interface Customization -->
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg mb-3 text-indigo-600">🎨 Interface</h3>
+                            <div class="space-y-2" id="interface-permissions">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Summary Panel -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">Permission Summary</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-green-100 dark:bg-green-900 p-4 rounded-lg">
+                            <div class="text-2xl font-bold text-green-600" id="enabled-count">0</div>
+                            <div class="text-sm text-green-700 dark:text-green-300">Enabled Permissions</div>
+                        </div>
+                        <div class="bg-red-100 dark:bg-red-900 p-4 rounded-lg">
+                            <div class="text-2xl font-bold text-red-600" id="disabled-count">0</div>
+                            <div class="text-sm text-red-700 dark:text-red-300">Disabled Permissions</div>
+                        </div>
+                        <div class="bg-blue-100 dark:bg-blue-900 p-4 rounded-lg">
+                            <div class="text-2xl font-bold text-blue-600" id="total-count">0</div>
+                            <div class="text-sm text-blue-700 dark:text-blue-300">Total Permissions</div>
+                        </div>
+                        <div class="bg-purple-100 dark:bg-purple-900 p-4 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-600" id="changes-count">0</div>
+                            <div class="text-sm text-purple-700 dark:text-purple-300">Pending Changes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentRole = 'viewer';
+        let permissions = [];
+        let pendingChanges = new Map();
+
+        // Permission categories for better organization
+        const permissionCategories = {
+            basic: [
+                'view_supply_register', 'view_demand_register', 'view_bill_register', 
+                'view_sanction_register', 'view_dashboard'
+            ],
+            crud: [
+                'add_records', 'edit_records', 'delete_records', 'move_records', 
+                'import_excel', 'data_import_all'
+            ],
+            analytics: [
+                'view_analytics', 'view_homepage_analytics', 'export_excel', 'print_reports',
+                'download_pdf', 'generate_reports', 'compare_years', 'advanced_visualization',
+                'export_reports', 'data_visualization_enhanced', 'chart_interactions',
+                'data_drill_down', 'comparison_tools', 'bulk_export', 'data_export_all',
+                'export_multiple_formats', 'print_advanced'
+            ],
+            search: [
+                'search_records', 'filter_records', 'sort_records', 'advanced_filter',
+                'advanced_search', 'custom_filters', 'column_sorting_advanced'
+            ],
+            system: [
+                'change_financial_year', 'view_backups', 'keyboard_shortcuts', 'calculator',
+                'real_time_updates', 'notification_access', 'data_analysis_tools',
+                'view_user_info', 'view_system_status', 'logout_access', 'session_status_view',
+                'session_management', 'api_access', 'cache_management', 'offline_mode'
+            ],
+            interface: [
+                'dark_mode_toggle', 'mobile_interface_access', 'help_documentation',
+                'tutorial_access', 'shortcut_customization', 'theme_customization',
+                'data_refresh', 'bookmark_views', 'saved_searches', 'time_range_selection',
+                'auto_refresh', 'dashboard_customization', 'widget_management', 'layout_preferences'
+            ]
+        };
+
+        // Login functionality
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    currentUser = result.user;
+                    
+                    if (currentUser.role !== 'super_admin') {
+                        alert('Access denied. Super admin privileges required.');
+                        return;
+                    }
+                    
+                    document.getElementById('login-container').classList.add('hidden');
+                    document.getElementById('permission-interface').classList.remove('hidden');
+                    
+                    await loadPermissions();
+                } else {
+                    alert(result.message || 'Invalid credentials');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed. Please try again.');
+            }
+        });
+
+        // Load permissions from server
+        async function loadPermissions() {
+            try {
+                const response = await fetch('/api/permissions');
+                permissions = await response.json();
+                renderPermissions();
+                updateSummary();
+            } catch (error) {
+                console.error('Error loading permissions:', error);
+                alert('Failed to load permissions');
+            }
+        }
+
+        // Render permissions by category
+        function renderPermissions() {
+            const rolePermissions = permissions.filter(p => p.role === currentRole);
+            
+            // Clear all categories
+            Object.keys(permissionCategories).forEach(category => {
+                document.getElementById(`${category}-permissions`).innerHTML = '';
+            });
+            
+            // Populate each category
+            Object.keys(permissionCategories).forEach(category => {
+                const categoryPermissions = permissionCategories[category];
+                const container = document.getElementById(`${category}-permissions`);
+                
+                categoryPermissions.forEach(permissionName => {
+                    const permission = rolePermissions.find(p => p.permission_name === permissionName);
+                    if (permission) {
+                        const permissionEl = createPermissionElement(permission);
+                        container.appendChild(permissionEl);
+                    }
+                });
+            });
+        }
+
+        // Create permission toggle element
+        function createPermissionElement(permission) {
+            const div = document.createElement('div');
+            div.className = 'flex items-center justify-between p-2 border rounded hover:bg-gray-50 dark:hover:bg-gray-700';
+            
+            const isEnabled = permission.enabled;
+            const isPending = pendingChanges.has(`${permission.role}_${permission.permission_name}`);
+            
+            div.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <label class="flex items-center cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            ${isEnabled ? 'checked' : ''} 
+                            onchange="togglePermission('${permission.role}', '${permission.permission_name}')"
+                            class="rounded"
+                        >
+                        <span class="ml-2 text-sm ${isPending ? 'font-bold text-blue-600' : ''}">${formatPermissionName(permission.permission_name)}</span>
+                    </label>
+                </div>
+                <div class="text-xs ${isEnabled ? 'text-green-600' : 'text-red-600'}">
+                    ${isEnabled ? '✓' : '✗'} ${isPending ? '(Pending)' : ''}
+                </div>
+            `;
+            
+            return div;
+        }
+
+        // Format permission name for display
+        function formatPermissionName(name) {
+            return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        // Toggle permission
+        async function togglePermission(role, permissionName) {
+            try {
+                const permission = permissions.find(p => p.role === role && p.permission_name === permissionName);
+                const newEnabled = !permission.enabled;
+                
+                const response = await fetch('/api/permissions/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        role: role,
+                        permissionName: permissionName,
+                        enabled: newEnabled
+                    })
+                });
+                
+                if (response.ok) {
+                    permission.enabled = newEnabled;
+                    renderPermissions();
+                    updateSummary();
+                    showSuccessMessage(`Permission ${newEnabled ? 'enabled' : 'disabled'} successfully`);
+                } else {
+                    throw new Error('Failed to update permission');
+                }
+            } catch (error) {
+                console.error('Error updating permission:', error);
+                alert('Failed to update permission');
+                await loadPermissions(); // Reload to reset state
+            }
+        }
+
+        // Tab switching
+        document.getElementById('viewer-tab').addEventListener('click', () => switchRole('viewer'));
+        document.getElementById('admin-tab').addEventListener('click', () => switchRole('admin'));
+
+        function switchRole(role) {
+            currentRole = role;
+            
+            // Update tab appearance
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.getElementById(`${role}-tab`).classList.add('border-blue-500', 'text-blue-600');
+            document.getElementById(`${role}-tab`).classList.remove('border-transparent', 'text-gray-500');
+            
+            document.getElementById('current-role').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+            
+            renderPermissions();
+            updateSummary();
+        }
+
+        // Bulk operations
+        document.getElementById('enable-all').addEventListener('click', () => bulkUpdatePermissions(true));
+        document.getElementById('disable-all').addEventListener('click', () => bulkUpdatePermissions(false));
+
+        async function bulkUpdatePermissions(enable) {
+            if (!confirm(`Are you sure you want to ${enable ? 'enable' : 'disable'} all permissions for ${currentRole}?`)) {
+                return;
+            }
+            
+            const rolePermissions = permissions.filter(p => p.role === currentRole);
+            
+            for (const permission of rolePermissions) {
+                if (permission.enabled !== enable) {
+                    try {
+                        const response = await fetch('/api/permissions/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                role: currentRole,
+                                permissionName: permission.permission_name,
+                                enabled: enable
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            permission.enabled = enable;
+                        }
+                    } catch (error) {
+                        console.error('Error updating permission:', error);
+                    }
+                }
+            }
+            
+            renderPermissions();
+            updateSummary();
+            showSuccessMessage(`All permissions ${enable ? 'enabled' : 'disabled'} successfully`);
+        }
+
+        // Search functionality
+        document.getElementById('permission-search').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const permissionElements = document.querySelectorAll('[id$="-permissions"] > div');
+            
+            permissionElements.forEach(el => {
+                const text = el.textContent.toLowerCase();
+                el.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+            });
+        });
+
+        // Update summary statistics
+        function updateSummary() {
+            const rolePermissions = permissions.filter(p => p.role === currentRole);
+            const enabled = rolePermissions.filter(p => p.enabled).length;
+            const disabled = rolePermissions.length - enabled;
+            const total = rolePermissions.length;
+            
+            document.getElementById('enabled-count').textContent = enabled;
+            document.getElementById('disabled-count').textContent = disabled;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('changes-count').textContent = pendingChanges.size;
+        }
+
+        // Show success message
+        function showSuccessMessage(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg z-50';
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <span class="text-xl mr-2">✅</span>
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-green-700 hover:text-green-900">&times;</button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 3000);
+        }
+
+        // Refresh permissions
+        document.getElementById('refresh-permissions').addEventListener('click', loadPermissions);
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                fetch('/api/logout', { method: 'POST' })
+                    .then(() => {
+                        currentUser = null;
+                        document.getElementById('permission-interface').classList.add('hidden');
+                        document.getElementById('login-container').classList.remove('hidden');
+                        document.getElementById('username').value = '';
+                        document.getElementById('password').value = '';
+                    });
+            }
+        });
+    </script>
+</body>
+</html>

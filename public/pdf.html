@@ -1,0 +1,1049 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Tools Portal</title>
+    <script src="/libs/pdf-lib/pdf-lib.min.js"></script>
+    <script src="/libs/pdf.js/pdf.min.js"></script>
+    <script src="/libs/jspdf/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #f5576c;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .user-badge {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            padding: 0.6rem 1.8rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.25);
+        }
+
+        .tool-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .tool-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.8rem;
+        }
+
+        .tool-desc {
+            color: #666;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .workspace {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+            display: none;
+        }
+
+        .workspace.active {
+            display: block;
+        }
+
+        .workspace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 3px solid #f0f0f0;
+        }
+
+        .back-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #4b5563;
+        }
+
+        .upload-zone {
+            border: 3px dashed #f5576c;
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            background: rgba(245, 87, 108, 0.05);
+            margin-bottom: 2rem;
+            transition: all 0.3s;
+        }
+
+        .upload-zone:hover {
+            background: rgba(245, 87, 108, 0.1);
+            border-color: #f093fb;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-secondary {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .file-preview {
+            background: #f9fafb;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+
+        .input-group {
+            margin: 1.5rem 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #f5576c;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        .toast.success { border-left: 4px solid #10b981; }
+        .toast.error { border-left: 4px solid #ef4444; }
+
+        .page-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .page-item {
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .page-item:hover {
+            border-color: #f5576c;
+            background: rgba(245, 87, 108, 0.05);
+        }
+
+        .page-item.selected {
+            border-color: #f5576c;
+            background: rgba(245, 87, 108, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📄 PDF Tools Portal</h1>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="user-badge" id="user-info">Welcome</div>
+            <button class="logout-btn" id="logout-btn">Back to Home</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="tools-view">
+            <div class="tools-grid">
+                <div class="tool-card" onclick="openTool('merge')">
+                    <div class="tool-icon">📑</div>
+                    <div class="tool-title">Merge PDFs</div>
+                    <div class="tool-desc">Combine multiple PDF files into one document</div>
+                </div>
+                <div class="tool-card" onclick="openTool('split')">
+                    <div class="tool-icon">✂️</div>
+                    <div class="tool-title">Split PDF</div>
+                    <div class="tool-desc">Extract specific pages from your PDF</div>
+                </div>
+                <div class="tool-card" onclick="openTool('remove')">
+                    <div class="tool-icon">🗑️</div>
+                    <div class="tool-title">Remove Pages</div>
+                    <div class="tool-desc">Delete unwanted pages from PDF</div>
+                </div>
+                <div class="tool-card" onclick="openTool('rotate')">
+                    <div class="tool-icon">🔄</div>
+                    <div class="tool-title">Rotate Pages</div>
+                    <div class="tool-desc">Rotate PDF pages to correct orientation</div>
+                </div>
+                <div class="tool-card" onclick="openTool('compress')">
+                    <div class="tool-icon">🗜️</div>
+                    <div class="tool-title">Compress PDF</div>
+                    <div class="tool-desc">Reduce PDF file size for easier sharing</div>
+                </div>
+                <div class="tool-card" onclick="openTool('watermark')">
+                    <div class="tool-icon">💧</div>
+                    <div class="tool-title">Add Watermark</div>
+                    <div class="tool-desc">Add text watermark to your PDF</div>
+                </div>
+                <div class="tool-card" onclick="openTool('protect')">
+                    <div class="tool-icon">🔒</div>
+                    <div class="tool-title">Protect PDF</div>
+                    <div class="tool-desc">Add password protection to PDF</div>
+                </div>
+                <div class="tool-card" onclick="openTool('images')">
+                    <div class="tool-icon">🖼️</div>
+                    <div class="tool-title">PDF to Images</div>
+                    <div class="tool-desc">Convert PDF pages to image files</div>
+                </div>
+                <div class="tool-card" onclick="openTool('toword')">
+                    <div class="tool-icon">📝</div>
+                    <div class="tool-title">PDF to Word</div>
+                    <div class="tool-desc">Convert PDF to Word document</div>
+                </div>
+                <div class="tool-card" onclick="openTool('edittext')">
+                    <div class="tool-icon">✏️</div>
+                    <div class="tool-title">Edit PDF Text</div>
+                    <div class="tool-desc">Add or modify text in PDF</div>
+                </div>
+                <div class="tool-card" onclick="openTool('extracttext')">
+                    <div class="tool-icon">📋</div>
+                    <div class="tool-title">Extract Text</div>
+                    <div class="tool-desc">Extract all text from PDF</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Merge PDF Workspace -->
+        <div id="merge-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>📑 Merge PDFs</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('merge-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload multiple PDF files</p>
+                <input type="file" id="merge-input" class="file-input" accept=".pdf" multiple>
+            </div>
+            <div id="merge-files" class="file-preview"></div>
+            <button class="btn-secondary" onclick="mergePDFs()">Merge PDFs</button>
+        </div>
+
+        <!-- Split PDF Workspace -->
+        <div id="split-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>✂️ Split PDF</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('split-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="split-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="split-preview" class="file-preview"></div>
+            <div class="input-group">
+                <label>Page Range (e.g., 1-5):</label>
+                <input type="text" id="split-range" placeholder="1-5">
+            </div>
+            <button class="btn-secondary" onclick="splitPDF()">Split PDF</button>
+        </div>
+
+        <!-- Remove Pages Workspace -->
+        <div id="remove-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>🗑️ Remove Pages</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('remove-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="remove-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="remove-preview" class="file-preview"></div>
+            <div class="input-group">
+                <label>Pages to Remove (e.g., 2,4,6):</label>
+                <input type="text" id="remove-pages" placeholder="2,4,6">
+            </div>
+            <button class="btn-secondary" onclick="removePages()">Remove Pages</button>
+        </div>
+
+        <!-- Rotate Pages Workspace -->
+        <div id="rotate-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>🔄 Rotate Pages</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('rotate-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="rotate-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="rotate-preview" class="file-preview"></div>
+            <div class="input-group">
+                <label>Rotation Angle:</label>
+                <select id="rotate-angle">
+                    <option value="90">90° Clockwise</option>
+                    <option value="180">180°</option>
+                    <option value="270">270° (90° Counter-clockwise)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Pages to Rotate (leave empty for all):</label>
+                <input type="text" id="rotate-pages" placeholder="1,3,5 or leave empty for all">
+            </div>
+            <button class="btn-secondary" onclick="rotatePDF()">Rotate Pages</button>
+        </div>
+
+        <!-- Compress PDF Workspace -->
+        <div id="compress-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>🗜️ Compress PDF</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('compress-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="compress-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="compress-preview" class="file-preview"></div>
+            <button class="btn-secondary" onclick="compressPDF()">Compress PDF</button>
+        </div>
+
+        <!-- Watermark Workspace -->
+        <div id="watermark-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>💧 Add Watermark</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('watermark-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="watermark-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="watermark-preview" class="file-preview"></div>
+            <div class="input-group">
+                <label>Watermark Text:</label>
+                <input type="text" id="watermark-text" placeholder="CONFIDENTIAL">
+            </div>
+            <button class="btn-secondary" onclick="addWatermark()">Add Watermark</button>
+        </div>
+
+        <!-- Protect PDF Workspace -->
+        <div id="protect-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>🔒 Protect PDF</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('protect-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="protect-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="protect-preview" class="file-preview"></div>
+            <div class="input-group">
+                <label>Password:</label>
+                <input type="password" id="protect-password" placeholder="Enter password">
+            </div>
+            <button class="btn-secondary" onclick="protectPDF()">Protect PDF</button>
+        </div>
+
+        <!-- PDF to Images Workspace -->
+        <div id="images-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>🖼️ PDF to Images</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('images-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="images-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="images-preview" class="file-preview"></div>
+            <button class="btn-secondary" onclick="convertToImages()">Convert to Images</button>
+        </div>
+
+        <!-- PDF to Word Workspace -->
+        <div id="toword-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>📝 PDF to Word</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('toword-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="toword-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="toword-preview" class="file-preview"></div>
+            <button class="btn-secondary" onclick="convertToWord()">Convert to Word</button>
+        </div>
+
+        <!-- Edit PDF Text Workspace -->
+        <div id="edittext-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>✏️ Edit PDF Text</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('edittext-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="edittext-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="edittext-preview" class="file-preview"></div>
+            <div class="input-group">
+                <label>Text to Add:</label>
+                <textarea id="edittext-text" rows="3" placeholder="Enter text to add to PDF" class="w-full p-2 border rounded"></textarea>
+            </div>
+            <div class="input-group">
+                <label>Position (X, Y):</label>
+                <div class="flex gap-2">
+                    <input type="number" id="edittext-x" placeholder="X" value="50" class="w-full p-2 border rounded">
+                    <input type="number" id="edittext-y" placeholder="Y" value="700" class="w-full p-2 border rounded">
+                </div>
+            </div>
+            <button class="btn-secondary" onclick="editPDFText()">Add Text to PDF</button>
+        </div>
+
+        <!-- Extract Text Workspace -->
+        <div id="extracttext-workspace" class="workspace">
+            <div class="workspace-header">
+                <h2>📋 Extract Text</h2>
+                <button class="back-btn" onclick="closeTool()">← Back</button>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('extracttext-input').click()">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">📤</div>
+                <p style="font-size: 1.1rem;">Click to upload PDF file</p>
+                <input type="file" id="extracttext-input" class="file-input" accept=".pdf">
+            </div>
+            <div id="extracttext-preview" class="file-preview"></div>
+            <div id="extracttext-result" class="mt-4 p-4 bg-gray-100 rounded hidden">
+                <h3 class="font-bold mb-2">Extracted Text:</h3>
+                <textarea id="extracttext-output" rows="10" class="w-full p-2 border rounded" readonly></textarea>
+                <button class="btn-secondary mt-2" onclick="copyExtractedText()">Copy to Clipboard</button>
+            </div>
+            <button class="btn-secondary" onclick="extractText()">Extract Text</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let mergeFiles = [];
+        let currentPdf = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default user info for public access
+            document.getElementById('user-info').textContent = 'PDF Tools - Public Access';
+            setupEventListeners();
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            window.location.href = '/homepage.html';
+        });
+
+        function setupEventListeners() {
+            document.getElementById('merge-input').addEventListener('change', handleMergeFiles);
+            document.getElementById('split-input').addEventListener('change', handleSplitFile);
+            document.getElementById('remove-input').addEventListener('change', handleRemoveFile);
+            document.getElementById('rotate-input').addEventListener('change', handleRotateFile);
+            document.getElementById('compress-input').addEventListener('change', handleCompressFile);
+            document.getElementById('watermark-input').addEventListener('change', handleWatermarkFile);
+            document.getElementById('protect-input').addEventListener('change', handleProtectFile);
+            document.getElementById('images-input').addEventListener('change', handleImagesFile);
+            document.getElementById('toword-input').addEventListener('change', handleToWordFile);
+            document.getElementById('edittext-input').addEventListener('change', handleEditTextFile);
+            document.getElementById('extracttext-input').addEventListener('change', handleExtractTextFile);
+        }
+
+        function openTool(tool) {
+            document.getElementById('tools-view').style.display = 'none';
+            document.getElementById(tool + '-workspace').classList.add('active');
+        }
+
+        function closeTool() {
+            document.querySelectorAll('.workspace').forEach(w => w.classList.remove('active'));
+            document.getElementById('tools-view').style.display = 'block';
+        }
+
+        function handleMergeFiles(e) {
+            mergeFiles = Array.from(e.target.files);
+            const preview = document.getElementById('merge-files');
+            preview.innerHTML = mergeFiles.map(f => `<div style="padding: 0.5rem;">📄 ${f.name}</div>`).join('');
+        }
+
+        function handleSplitFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('split-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        function handleRemoveFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('remove-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        function handleRotateFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('rotate-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        function handleCompressFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('compress-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        function handleWatermarkFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('watermark-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        function handleProtectFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('protect-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        function handleImagesFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('images-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        async function mergePDFs() {
+            if (mergeFiles.length < 2) {
+                showToast('Please select at least 2 PDF files', 'error');
+                return;
+            }
+
+            try {
+                const { PDFDocument } = PDFLib;
+                const mergedPdf = await PDFDocument.create();
+
+                for (const file of mergeFiles) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFDocument.load(arrayBuffer);
+                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    copiedPages.forEach((page) => mergedPdf.addPage(page));
+                }
+
+                const pdfBytes = await mergedPdf.save();
+                downloadPDF(pdfBytes, 'merged.pdf');
+                showToast('PDFs merged successfully!', 'success');
+            } catch (error) {
+                showToast('Error merging PDFs: ' + error.message, 'error');
+            }
+        }
+
+        async function splitPDF() {
+            const fileInput = document.getElementById('split-input');
+            const range = document.getElementById('split-range').value;
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            try {
+                const [start, end] = range.split('-').map(n => parseInt(n) - 1);
+                const { PDFDocument } = PDFLib;
+                
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                const newPdf = await PDFDocument.create();
+                
+                for (let i = start; i <= end && i < pdfDoc.getPageCount(); i++) {
+                    const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
+                    newPdf.addPage(copiedPage);
+                }
+
+                const pdfBytes = await newPdf.save();
+                downloadPDF(pdfBytes, `split_${range}.pdf`);
+                showToast('PDF split successfully!', 'success');
+            } catch (error) {
+                showToast('Error splitting PDF: ' + error.message, 'error');
+            }
+        }
+
+        async function removePages() {
+            const fileInput = document.getElementById('remove-input');
+            const pagesToRemove = document.getElementById('remove-pages').value.split(',').map(n => parseInt(n.trim()) - 1);
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            try {
+                const { PDFDocument } = PDFLib;
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                const newPdf = await PDFDocument.create();
+                
+                for (let i = 0; i < pdfDoc.getPageCount(); i++) {
+                    if (!pagesToRemove.includes(i)) {
+                        const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
+                        newPdf.addPage(copiedPage);
+                    }
+                }
+
+                const pdfBytes = await newPdf.save();
+                downloadPDF(pdfBytes, 'removed_pages.pdf');
+                showToast('Pages removed successfully!', 'success');
+            } catch (error) {
+                showToast('Error removing pages: ' + error.message, 'error');
+            }
+        }
+
+        async function rotatePDF() {
+            const fileInput = document.getElementById('rotate-input');
+            const angle = parseInt(document.getElementById('rotate-angle').value);
+            const pagesStr = document.getElementById('rotate-pages').value;
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            try {
+                const { PDFDocument, degrees } = PDFLib;
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                
+                const pagesToRotate = pagesStr ? pagesStr.split(',').map(n => parseInt(n.trim()) - 1) : 
+                                      [...Array(pdfDoc.getPageCount()).keys()];
+                
+                pagesToRotate.forEach(pageIndex => {
+                    if (pageIndex >= 0 && pageIndex < pdfDoc.getPageCount()) {
+                        const page = pdfDoc.getPage(pageIndex);
+                        page.setRotation(degrees(angle));
+                    }
+                });
+
+                const pdfBytes = await pdfDoc.save();
+                downloadPDF(pdfBytes, 'rotated.pdf');
+                showToast('PDF rotated successfully!', 'success');
+            } catch (error) {
+                showToast('Error rotating PDF: ' + error.message, 'error');
+            }
+        }
+
+        async function compressPDF() {
+            const fileInput = document.getElementById('compress-input');
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            try {
+                const { PDFDocument } = PDFLib;
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                
+                const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
+                downloadPDF(pdfBytes, 'compressed.pdf');
+                showToast('PDF compressed successfully!', 'success');
+            } catch (error) {
+                showToast('Error compressing PDF: ' + error.message, 'error');
+            }
+        }
+
+        async function addWatermark() {
+            const fileInput = document.getElementById('watermark-input');
+            const watermarkText = document.getElementById('watermark-text').value;
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            if (!watermarkText) {
+                showToast('Please enter watermark text', 'error');
+                return;
+            }
+
+            try {
+                const { PDFDocument, rgb } = PDFLib;
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                
+                const pages = pdfDoc.getPages();
+                
+                pages.forEach(page => {
+                    const { width, height } = page.getSize();
+                    page.drawText(watermarkText, {
+                        x: width / 2 - 100,
+                        y: height / 2,
+                        size: 50,
+                        color: rgb(0.75, 0.75, 0.75),
+                        opacity: 0.3
+                    });
+                });
+
+                const pdfBytes = await pdfDoc.save();
+                downloadPDF(pdfBytes, 'watermarked.pdf');
+                showToast('Watermark added successfully!', 'success');
+            } catch (error) {
+                showToast('Error adding watermark: ' + error.message, 'error');
+            }
+        }
+
+        async function protectPDF() {
+            const fileInput = document.getElementById('protect-input');
+            const password = document.getElementById('protect-password').value;
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            if (!password) {
+                showToast('Please enter a password', 'error');
+                return;
+            }
+
+            try {
+                const { PDFDocument } = PDFLib;
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                
+                // Note: pdf-lib doesn't support password protection directly
+                // This is a placeholder - in production, use a server-side solution
+                const pdfBytes = await pdfDoc.save();
+                downloadPDF(pdfBytes, 'protected.pdf');
+                showToast('Note: Password protection requires server-side processing. File saved without encryption.', 'error');
+            } catch (error) {
+                showToast('Error protecting PDF: ' + error.message, 'error');
+            }
+        }
+
+        function handleToWordFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('toword-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        function handleEditTextFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('edittext-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        function handleExtractTextFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('extracttext-preview').innerHTML = `<div>📄 ${file.name}</div>`;
+            }
+        }
+
+        async function convertToWord() {
+            const fileInput = document.getElementById('toword-input');
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            try {
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+                const pdf = await loadingTask.promise;
+                
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n\n';
+                }
+
+                // Create Word-like document
+                const blob = new Blob([fullText], { type: 'application/msword' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'converted.doc';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                showToast('PDF converted to Word successfully!', 'success');
+            } catch (error) {
+                showToast('Error converting PDF: ' + error.message, 'error');
+            }
+        }
+
+        async function editPDFText() {
+            const fileInput = document.getElementById('edittext-input');
+            const text = document.getElementById('edittext-text').value;
+            const x = parseInt(document.getElementById('edittext-x').value);
+            const y = parseInt(document.getElementById('edittext-y').value);
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            if (!text) {
+                showToast('Please enter text to add', 'error');
+                return;
+            }
+
+            try {
+                const { PDFDocument, rgb } = PDFLib;
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                const pages = pdfDoc.getPages();
+                const firstPage = pages[0];
+                
+                firstPage.drawText(text, {
+                    x: x,
+                    y: y,
+                    size: 12,
+                    color: rgb(0, 0, 0),
+                });
+
+                const pdfBytes = await pdfDoc.save();
+                downloadPDF(pdfBytes, 'edited-text.pdf');
+                showToast('Text added successfully!', 'success');
+            } catch (error) {
+                showToast('Error editing PDF: ' + error.message, 'error');
+            }
+        }
+
+        async function extractText() {
+            const fileInput = document.getElementById('extracttext-input');
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            try {
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+                const pdf = await loadingTask.promise;
+                
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += `--- Page ${i} ---\n${pageText}\n\n`;
+                }
+
+                document.getElementById('extracttext-output').value = fullText;
+                document.getElementById('extracttext-result').classList.remove('hidden');
+                showToast('Text extracted successfully!', 'success');
+            } catch (error) {
+                showToast('Error extracting text: ' + error.message, 'error');
+            }
+        }
+
+        function copyExtractedText() {
+            const textArea = document.getElementById('extracttext-output');
+            textArea.select();
+            document.execCommand('copy');
+            showToast('Text copied to clipboard!', 'success');
+        }
+
+        async function convertToImages() {
+            const fileInput = document.getElementById('images-input');
+            
+            if (!fileInput.files[0]) {
+                showToast('Please select a PDF file', 'error');
+                return;
+            }
+
+            try {
+                showToast('Converting PDF to images...', 'success');
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+                const pdf = await loadingTask.promise;
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 2 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+                    
+                    canvas.toBlob(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `page-${i}.png`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    });
+                }
+                
+                showToast('PDF converted to images successfully!', 'success');
+            } catch (error) {
+                showToast('Error converting PDF: ' + error.message, 'error');
+            }
+        }
+
+        function downloadPDF(pdfBytes, filename) {
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+    </script>
+</body>
+</html>

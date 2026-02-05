@@ -1,0 +1,2398 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Material Management Group - DRDO</title>
+        <script src="/libs/tailwindcss/tailwindcss.min.js"></script>
+        <script src="/libs/chart.js/chart.min.js"></script>
+        <script src="/libs/chart.js/chartjs-adapter-date-fns.min.js"></script>
+        <script src="/libs/chart.js/chartjs-plugin-zoom.min.js"></script>
+        <script src="/libs/chart.js/chartjs-plugin-datalabels.min.js"></script>
+        <script src="/libs/socket.io/socket.io.min.js"></script>
+        <script>
+            tailwind.config = {
+                darkMode: "class",
+            };
+        </script>
+        <style>
+            .hero-gradient {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .feature-card {
+                transition:
+                    transform 0.3s ease,
+                    box-shadow 0.3s ease;
+            }
+            .feature-card:hover {
+                transform: translateY(-5px);
+                box-shadow:
+                    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            }
+            .login-modal {
+                backdrop-filter: blur(10px);
+                background-color: rgba(0, 0, 0, 0.5);
+            }
+            .chart-container {
+                position: relative;
+                height: 300px;
+                width: 100%;
+            }
+            .visitor-counter {
+                transition: all 0.3s ease;
+                backdrop-filter: blur(10px);
+            }
+            .visitor-counter:hover {
+                transform: scale(1.05);
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            }
+            #visitor-count {
+                transition: all 0.3s ease;
+            }
+        </style>
+    </head>
+    <body
+        class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen"
+    >
+        <!-- Header -->
+        <header
+            class="bg-white dark:bg-gray-800 shadow-lg border-b-4 border-blue-600"
+        >
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-4">
+                        <img
+                            src="/logo-bg.png"
+                            alt="DRDO Logo"
+                            class="w-16 h-16 object-contain"
+                        />
+                        <div>
+                            <h1
+                                class="text-2xl font-bold text-blue-800 dark:text-blue-400"
+                            >
+                                Material Management Group
+                            </h1>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                Aerial Delivery Research & Development
+                                Establishment
+                            </p>
+                        </div>
+                    </div>
+                    <nav class="flex items-center space-x-4">
+                        <a
+                            href="#about"
+                            class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition"
+                            >About</a
+                        >
+                        <button
+                            onclick="window.location.href='/pdf.html'"
+                            class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition font-semibold shadow-lg"
+                        >
+                            📄 PDF Tools
+                        </button>
+                        <button
+                            id="login-btn"
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
+                        >
+                            Login
+                        </button>
+                        <button
+                            id="dark-mode-toggle"
+                            class="bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition"
+                            title="Toggle Dark Mode"
+                        >
+                            🌙
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Hero Section -->
+            <section class="hero-gradient text-white py-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h1 class="text-5xl font-bold mb-6">
+                        Welcome to the Material Management Group
+                    </h1>
+                    <p class="text-xl mb-8 max-w-3xl mx-auto">
+                        The heartbeat of organizational operational success,
+                        ensuring seamless procurement, inventory control, and
+                        distribution for every project and process.
+                    </p>
+                    <button
+                        id="hero-login-btn"
+                        class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
+                    >
+                        Access Management System
+                    </button>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics" class="py-16 bg-gray-50 dark:bg-gray-900">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center mb-12">
+                        <h2
+                            class="text-4xl font-bold text-gray-900 dark:text-white mb-4"
+                        >
+                            Order Analytics
+                        </h2>
+                        <div class="w-24 h-1 bg-blue-600 mx-auto"></div>
+                    </div>
+
+                    <div
+                        class="mb-8 flex justify-center items-center space-x-4"
+                    >
+                        <label
+                            for="analytics-year"
+                            class="text-lg font-semibold text-gray-700 dark:text-gray-300"
+                            >Financial Year:</label
+                        >
+                        <select
+                            id="analytics-year"
+                            class="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        >
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                        <span class="text-sm text-gray-600 dark:text-gray-400"
+                            >Last Updated:
+                            <span id="last-updated">N/A</span></span
+                        >
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                        <!-- Supply Orders Stats -->
+                        <div
+                            class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md feature-card"
+                        >
+                            <h3
+                                class="text-xl font-bold text-blue-600 dark:text-blue-400 mb-3"
+                            >
+                                Supply Orders
+                            </h3>
+                            <p
+                                class="text-4xl font-bold text-gray-900 dark:text-white mb-2"
+                            >
+                                <span id="analytics-supply-count">0</span>
+                            </p>
+                            <p class="text-lg text-gray-600 dark:text-gray-400">
+                                Total Value:
+                                <span id="analytics-supply-value">0.00</span> ₹L
+                            </p>
+                        </div>
+
+                        <!-- Demand Orders Stats -->
+                        <div
+                            class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md feature-card"
+                        >
+                            <h3
+                                class="text-xl font-bold text-green-600 dark:text-green-400 mb-3"
+                            >
+                                Demand Orders
+                            </h3>
+                            <p
+                                class="text-4xl font-bold text-gray-900 dark:text-white mb-2"
+                            >
+                                <span id="analytics-demand-count">0</span>
+                            </p>
+                            <p class="text-lg text-gray-600 dark:text-gray-400">
+                                Total Value:
+                                <span id="analytics-demand-value">0.00</span> ₹L
+                            </p>
+                        </div>
+
+                        <!-- Bill Processed Stats -->
+                        <div
+                            class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md feature-card"
+                        >
+                            <h3
+                                class="text-xl font-bold text-orange-600 dark:text-orange-400 mb-3"
+                            >
+                                Bills Processed
+                            </h3>
+                            <p
+                                class="text-4xl font-bold text-gray-900 dark:text-white mb-2"
+                            >
+                                <span id="analytics-bill-count">0</span>
+                            </p>
+                            <p class="text-lg text-gray-600 dark:text-gray-400">
+                                Total Value:
+                                <span id="analytics-bill-value">0.00</span> ₹L
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Order Trend Chart -->
+                        <div
+                            class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"
+                        >
+                            <h3
+                                class="text-xl font-bold text-gray-900 dark:text-white mb-4"
+                            >
+                                Monthly Order Trends
+                            </h3>
+                            <div class="chart-container">
+                                <canvas id="analytics-trend-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Order Distribution Chart -->
+                        <div
+                            class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"
+                        >
+                            <h3
+                                class="text-xl font-bold text-gray-900 dark:text-white mb-4"
+                            >
+                                Order Type Distribution
+                            </h3>
+                            <div class="chart-container">
+                                <canvas
+                                    id="analytics-distribution-chart"
+                                ></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                        <!-- Financial Year Trends Chart -->
+                        <div
+                            class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"
+                        >
+                            <h3
+                                class="text-xl font-bold text-gray-900 dark:text-white mb-4"
+                            >
+                                Order Trends by Financial Year
+                            </h3>
+                            <div class="chart-container">
+                                <canvas
+                                    id="analytics-yearly-trend-chart"
+                                ></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Financial Year Value Comparison -->
+                        <div
+                            class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"
+                        >
+                            <h3
+                                class="text-xl font-bold text-gray-900 dark:text-white mb-4"
+                            >
+                                Value Comparison by Financial Year
+                            </h3>
+                            <div class="chart-container">
+                                <canvas
+                                    id="analytics-yearly-value-chart"
+                                ></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                        <!-- Total Value Chart -->
+                        <div
+                            class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-2"
+                        >
+                            <h3
+                                class="text-xl font-bold text-gray-900 dark:text-white mb-4"
+                            >
+                                Total Value of Orders by Type
+                            </h3>
+                            <div class="chart-container">
+                                <canvas id="analytics-value-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- About Section -->
+            <section id="about" class="py-16 bg-white dark:bg-gray-800">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center mb-12">
+                        <h2
+                            class="text-4xl font-bold text-gray-900 dark:text-white mb-4"
+                        >
+                            Who We Are
+                        </h2>
+                        <div class="w-24 h-1 bg-blue-600 mx-auto"></div>
+                    </div>
+
+                    <div
+                        class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center"
+                    >
+                        <div class="space-y-6">
+                            <p
+                                class="text-lg text-gray-700 dark:text-gray-300 leading-relaxed"
+                            >
+                                We handle the full spectrum of material management—from demand workflow to final bill processing—ensuring every step is seamless, compliant, and value-driven. As your trusted guides on GEM.gov.in, we craft precise cost estimations, orchestrate bid creation to award, and secure successful orders with qualified vendors. We monitor cases in real-time for transparency, prepare comprehensive notings and draftings, and drive techno-commercial evaluations with expert precision.
+                            </p>
+
+                            <p
+                                class="text-lg text-gray-700 dark:text-gray-300 leading-relaxed"
+                            >
+                                Partnering closely with Integrated Finance Advice (IFA) for timely concurrences, we guarantee on-schedule deliveries, accurate billing, and zero disruptions. Our necessity lies in our ability to maintain quality standards and prevent disruptions that could halt progress. We are the key to efficiency, driving profitability and sustainability through our strategic handling of resources. Without us, the supply chain would falter, and growth would stall.
+                            </p>
+
+                            <p
+                                class="text-lg text-gray-700 dark:text-gray-300 leading-relaxed"
+                            >
+                                We take pride in being the unsung hero whose efforts support every department's success. From proactive monitoring to strategic oversight, we turn complex procurement into efficient, transparent triumphs—empowering your operations with reliability and results.
+                            </p>
+                        </div>
+
+                        <div class="bg-blue-50 dark:bg-gray-700 p-8 rounded-xl">
+                            <h3
+                                class="text-2xl font-bold text-blue-800 dark:text-blue-400 mb-6"
+                            >
+                                Our Core Values
+                            </h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start space-x-3">
+                                    <span
+                                        class="w-2 h-2 bg-blue-600 rounded-full mt-2"
+                                    ></span>
+                                    <div>
+                                        <span
+                                            class="text-gray-700 dark:text-gray-300 font-semibold"
+                                            >Precision in Procurement:</span
+                                        >
+                                        <span
+                                            class="text-gray-600 dark:text-gray-400"
+                                            > Flawless GEM bid processes and vendor selection.</span
+                                        >
+                                    </div>
+                                </li>
+                                <li class="flex items-start space-x-3">
+                                    <span
+                                        class="w-2 h-2 bg-blue-600 rounded-full mt-2"
+                                    ></span>
+                                    <div>
+                                        <span
+                                            class="text-gray-700 dark:text-gray-300 font-semibold"
+                                            >Quality Standards Maintenance:</span
+                                        >
+                                        <span
+                                            class="text-gray-600 dark:text-gray-400"
+                                            > Rigorous evaluations and IFA compliance.</span
+                                        >
+                                    </div>
+                                </li>
+                                <li class="flex items-start space-x-3">
+                                    <span
+                                        class="w-2 h-2 bg-blue-600 rounded-full mt-2"
+                                    ></span>
+                                    <div>
+                                        <span
+                                            class="text-gray-700 dark:text-gray-300 font-semibold"
+                                            >Strategic Resource Handling:</span
+                                        >
+                                        <span
+                                            class="text-gray-600 dark:text-gray-400"
+                                            > End-to-end oversight for timely, sustainable delivery.</span
+                                        >
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Call to Action -->
+            <section class="py-16 bg-blue-600 text-white">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h2 class="text-2xl mb-8 font-bold">
+                        Thank you for recognizing my role—I am committed to
+                        excellence every step of the way!
+                    </h2>
+                    <h3 class="text-2xl font-bold">Let's Grow Together!</h3>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-900 text-white py-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <div
+                        class="flex items-center justify-center space-x-3 mb-4"
+                    >
+                        <img
+                            src="/logo-bg.png"
+                            alt="ADRDE Logo"
+                            class="w-12 h-12 object-contain"
+                        />
+                        <h3 class="text-xl font-bold">
+                            Material Management Group
+                        </h3>
+                    </div>
+                    <p class="text-gray-400 mb-4">
+                        Excellence in material management and procurement for
+                        aerial delivery research and development.
+                    </p>
+                    <button
+                        id="footer-login-btn"
+                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
+                    >
+                        Access Management System
+                    </button>
+                </div>
+
+                <!-- Visitor Counter -->
+                <div class="mt-8 flex justify-center">
+                    <div
+                        class="visitor-counter bg-gray-800 bg-opacity-80 backdrop-filter backdrop-blur-lg rounded-lg px-6 py-3 border border-gray-600 border-opacity-50"
+                    >
+                        <div class="flex items-center space-x-2 text-gray-300">
+                            <span class="text-lg">👁️</span>
+                            <span class="text-sm font-medium"
+                                >Total Visitors:</span
+                            >
+                            <span
+                                id="visitor-count"
+                                class="text-lg font-bold text-white"
+                                >Loading...</span
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-700 mt-8 pt-8 text-center">
+                    <p class="text-green-400">
+                        © Designed & Developed by SHASHANK SHARMA Under
+                        guidence of Mr WASIM RAZA(DH/MMG). All Rights Reserved.
+                    </p>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Login Modal -->
+        <div
+            id="login-modal"
+            class="hidden fixed inset-0 login-modal z-50 flex items-center justify-center"
+        >
+            <div
+                class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 relative"
+            >
+                <button
+                    id="close-modal"
+                    class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl"
+                >
+                    ×
+                </button>
+
+                <div id="login-container">
+                    <div class="text-center mb-6">
+                        <img
+                            src="/logo-bg.png"
+                            alt="DRDO Logo"
+                            class="w-16 h-16 object-contain mx-auto mb-4"
+                        />
+                        <h2
+                            class="text-2xl font-bold text-gray-800 dark:text-gray-100"
+                        >
+                            Login to Management System
+                        </h2>
+                    </div>
+                    <form id="login-form" class="space-y-4">
+                        <input
+                            type="text"
+                            id="username"
+                            placeholder="Username"
+                            required
+                            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                        <input
+                            type="password"
+                            id="password"
+                            placeholder="Password"
+                            required
+                            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                        <button
+                            type="submit"
+                            class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+                        >
+                            Login
+                        </button>
+                    </form>
+                    <div class="mt-4 text-center">
+                        <button
+                            id="change-password-btn"
+                            type="button"
+                            class="text-blue-600 hover:underline text-sm"
+                        >
+                            Change Password
+                        </button>
+                    </div>
+                </div>
+
+                <div id="change-password-container" class="hidden">
+                    <h2
+                        class="text-2xl font-bold text-center text-gray-800 dark:text-gray-100 mb-6"
+                    >
+                        Change Password
+                    </h2>
+                    <div id="security-question-form" class="space-y-4">
+                        <input
+                            type="text"
+                            id="change-username"
+                            placeholder="Enter username"
+                            required
+                            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                        <p
+                            class="text-gray-700 dark:text-gray-300 text-center mb-4"
+                        >
+                            Security Question: Who is omnipotent?
+                        </p>
+                        <input
+                            type="text"
+                            id="security-answer"
+                            placeholder="Enter your answer"
+                            required
+                            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                        <button
+                            id="verify-answer-btn"
+                            type="button"
+                            class="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition"
+                        >
+                            Verify Answer
+                        </button>
+                    </div>
+                    <div id="new-password-form" class="hidden space-y-4">
+                        <p class="text-green-600 text-center mb-4">
+                            Security question verified! Enter your new password:
+                        </p>
+                        <input
+                            type="password"
+                            id="new-password"
+                            placeholder="New Password"
+                            required
+                            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                        <input
+                            type="password"
+                            id="confirm-password"
+                            placeholder="Confirm New Password"
+                            required
+                            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                        <button
+                            id="update-password-btn"
+                            type="button"
+                            class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition"
+                        >
+                            Update Password
+                        </button>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <button
+                            id="back-to-login-btn"
+                            type="button"
+                            class="text-gray-600 hover:underline text-sm"
+                        >
+                            Back to Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Dark mode functionality
+            function toggleDarkMode() {
+                const html = document.documentElement;
+                const isDark = html.classList.contains("dark");
+
+                if (isDark) {
+                    html.classList.remove("dark");
+                    localStorage.setItem("darkMode", "false");
+                    updateDarkModeIcon(false);
+                } else {
+                    html.classList.add("dark");
+                    localStorage.setItem("darkMode", "true");
+                    updateDarkModeIcon(true);
+                }
+            }
+
+            function updateDarkModeIcon(isDark) {
+                const toggleBtn = document.getElementById("dark-mode-toggle");
+                if (toggleBtn) {
+                    toggleBtn.textContent = isDark ? "☀️" : "🌙";
+                    toggleBtn.title = isDark
+                        ? "Switch to Light Mode"
+                        : "Switch to Dark Mode";
+                }
+            }
+
+            function initializeDarkMode() {
+                const savedDarkMode = localStorage.getItem("darkMode");
+                const prefersDark = window.matchMedia(
+                    "(prefers-color-scheme: dark)",
+                ).matches;
+                const shouldUseDark =
+                    savedDarkMode === "true" ||
+                    (savedDarkMode === null && prefersDark);
+
+                if (shouldUseDark) {
+                    document.documentElement.classList.add("dark");
+                    updateDarkModeIcon(true);
+                } else {
+                    updateDarkModeIcon(false);
+                }
+            }
+
+            // Modal functionality
+            function showModal() {
+                document
+                    .getElementById("login-modal")
+                    .classList.remove("hidden");
+            }
+
+            function hideModal() {
+                document.getElementById("login-modal").classList.add("hidden");
+                // Reset forms
+                document
+                    .getElementById("login-container")
+                    .classList.remove("hidden");
+                document
+                    .getElementById("change-password-container")
+                    .classList.add("hidden");
+                document
+                    .getElementById("security-question-form")
+                    .classList.remove("hidden");
+                document
+                    .getElementById("new-password-form")
+                    .classList.add("hidden");
+                document.getElementById("login-form").reset();
+            }
+
+            // Smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+                anchor.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(
+                        this.getAttribute("href"),
+                    );
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                        });
+                    }
+                });
+            });
+
+            // Track homepage visit
+            async function trackHomepageVisit() {
+                try {
+                    await fetch('/api/network/track-visit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            pcInfo: {
+                                platform: navigator.platform,
+                                userAgent: navigator.userAgent,
+                                language: navigator.language,
+                                screenWidth: screen.width,
+                                screenHeight: screen.height,
+                                screenColorDepth: screen.colorDepth,
+                                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                memory: navigator.deviceMemory || 'N/A',
+                                cores: navigator.hardwareConcurrency || 'N/A',
+                                browser: getBrowserInfo(),
+                                os: getOSInfo()
+                            }
+                        })
+                    });
+                } catch (error) {
+                    console.error('Error tracking visit:', error);
+                }
+            }
+
+            function getBrowserInfo() {
+                const ua = navigator.userAgent;
+                if (ua.includes('Firefox')) return 'Firefox';
+                if (ua.includes('Chrome') && !ua.includes('Edg')) return 'Chrome';
+                if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+                if (ua.includes('Edg')) return 'Edge';
+                if (ua.includes('Opera') || ua.includes('OPR')) return 'Opera';
+                return 'Unknown';
+            }
+
+            function getOSInfo() {
+                const ua = navigator.userAgent;
+                if (ua.includes('Win')) return 'Windows';
+                if (ua.includes('Mac')) return 'macOS';
+                if (ua.includes('Linux')) return 'Linux';
+                if (ua.includes('Android')) return 'Android';
+                if (ua.includes('iOS')) return 'iOS';
+                return 'Unknown';
+            }
+
+            // Initialize on page load
+            document.addEventListener("DOMContentLoaded", function () {
+                initializeDarkMode();
+                trackHomepageVisit();
+
+                // Prevent any keyboard shortcuts on homepage
+                document.addEventListener("keydown", function(e) {
+                    // Only allow basic navigation and form shortcuts
+                    if (e.ctrlKey || e.metaKey || e.altKey) {
+                        // Allow basic browser shortcuts like Ctrl+R, Ctrl+F, etc.
+                        const allowedKeys = ['r', 'f', 'f5', 'f12', 'u'];
+                        if (!allowedKeys.includes(e.key.toLowerCase()) && e.key !== 'F5' && e.key !== 'F12') {
+                            // Don't prevent, but don't handle application shortcuts
+                            return;
+                        }
+                    }
+                });
+
+                // Dark mode toggle
+                document
+                    .getElementById("dark-mode-toggle")
+                    .addEventListener("click", toggleDarkMode);
+
+                // Modal controls
+                document
+                    .getElementById("login-btn")
+                    .addEventListener("click", showModal);
+                document
+                    .getElementById("hero-login-btn")
+                    .addEventListener("click", showModal);
+                document
+                    .getElementById("footer-login-btn")
+                    .addEventListener("click", showModal);
+                document
+                    .getElementById("close-modal")
+                    .addEventListener("click", hideModal);
+
+                // Close modal when clicking outside
+                document
+                    .getElementById("login-modal")
+                    .addEventListener("click", function (e) {
+                        if (e.target === this) {
+                            hideModal();
+                        }
+                    });
+
+                // Password change functionality
+                document
+                    .getElementById("change-password-btn")
+                    .addEventListener("click", function () {
+                        document
+                            .getElementById("login-container")
+                            .classList.add("hidden");
+                        document
+                            .getElementById("change-password-container")
+                            .classList.remove("hidden");
+                    });
+
+                document
+                    .getElementById("back-to-login-btn")
+                    .addEventListener("click", function () {
+                        document
+                            .getElementById("change-password-container")
+                            .classList.add("hidden");
+                        document
+                            .getElementById("login-container")
+                            .classList.remove("hidden");
+                    });
+
+                // Login form handling
+                document
+                    .getElementById("login-form")
+                    .addEventListener("submit", async (e) => {
+                        e.preventDefault();
+                        const username =
+                            document.getElementById("username").value;
+                        const password =
+                            document.getElementById("password").value;
+
+                        if (!username || !password) {
+                            alert("Please enter both username and password");
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch("/api/login", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ 
+                                    username, 
+                                    password,
+                                    pcInfo: {
+                                        platform: navigator.platform,
+                                        userAgent: navigator.userAgent,
+                                        language: navigator.language,
+                                        screenWidth: screen.width,
+                                        screenHeight: screen.height,
+                                        screenColorDepth: screen.colorDepth,
+                                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                        memory: navigator.deviceMemory || 'N/A',
+                                        cores: navigator.hardwareConcurrency || 'N/A',
+                                        browser: getBrowserInfo(),
+                                        os: getOSInfo()
+                                    }
+                                }),
+                            });
+
+                            const result = await response.json();
+
+                            if (response.ok && result.success) {
+                                // Store user info and redirect
+                                sessionStorage.setItem('user', JSON.stringify(result.user));
+
+                                // Check if there's a specific redirect for this user role
+                                if (result.redirectTo) {
+                                    window.location.href = result.redirectTo;
+                                } else {
+                                    // Redirect to main application
+                                    window.location.href = "/index.html";
+                                }
+                            } else {
+                                alert(result.message || "Invalid credentials");
+                            }
+                        } catch (error) {
+                            console.error("Login error:", error);
+                            alert("Login failed. Please try again.");
+                        }
+                    });
+
+                // Security question verification
+                document
+                    .getElementById("verify-answer-btn")
+                    .addEventListener("click", async function () {
+                        const username = document
+                            .getElementById("change-username")
+                            .value.trim();
+                        const answer = document
+                            .getElementById("security-answer")
+                            .value.toLowerCase()
+                            .trim();
+
+                        if (!username) {
+                            alert("Please enter a username.");
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch(
+                                "/api/verify-security",
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        username: username,
+                                        answer,
+                                    }),
+                                },
+                            );
+
+                            const result = await response.json();
+
+                            if (response.ok && result.success) {
+                                // Store username for password update
+                                window.changePasswordUsername = username;
+                                document
+                                    .getElementById("security-question-form")
+                                    .classList.add("hidden");
+                                document
+                                    .getElementById("new-password-form")
+                                    .classList.remove("hidden");
+                            } else {
+                                alert(
+                                    result.message ||
+                                        "Incorrect answer. Please try again.",
+                                );
+                                document.getElementById("security-answer").value =
+                                    "";
+                            }
+                        } catch (error) {
+                            console.error("Security verification error:", error);
+                            alert("Verification failed. Please try again.");
+                        }
+                    });
+
+                // Password update
+                document
+                    .getElementById("update-password-btn")
+                    .addEventListener("click", async function () {
+                        const newPassword =
+                            document.getElementById("new-password").value;
+                        const confirmPassword =
+                            document.getElementById("confirm-password").value;
+
+                        if (!newPassword || !confirmPassword) {
+                            alert("Please fill in both password fields.");
+                            return;
+                        }
+
+                        if (newPassword !== confirmPassword) {
+                            alert("Passwords do not match. Please try again.");
+                            return;
+                        }
+
+                        if (newPassword.length < 6) {
+                            alert(
+                                "Password must be at least 6 characters long.",
+                            );
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch(
+                                "/api/change-password",
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        username: window.changePasswordUsername,
+                                        newPassword,
+                                    }),
+                                },
+                            );
+
+                            const result = await response.json();
+
+                            if (response.ok && result.success) {
+                                alert("Password changed successfully");
+                                hideModal();
+                            } else {
+                                alert(
+                                    result.message ||
+                                        "Failed to change password",
+                                );
+                            }
+                        } catch (error) {
+                            console.error("Password change error:", error);
+                            alert("Password change failed. Please try again.");
+                        }
+                    });
+
+                // Analytics functionality with enhanced features
+                let analyticsCharts = {
+                    trend: null,
+                    distribution: null,
+                    value: null,
+                    yearlyTrend: null,
+                    yearlyValue: null,
+                };
+
+                // Fix for loadData function reference
+                window.loadAnalyticsData = loadAnalyticsData;
+
+                // Function to load available financial years
+                async function loadFinancialYears() {
+                    try {
+                        const response = await fetch(
+                            "/api/public/financial-years",
+                        );
+                        if (response.ok) {
+                            const financialYears = await response.json();
+                            const select =
+                                document.getElementById("analytics-year");
+
+                            // Clear existing options
+                            select.innerHTML = "";
+
+                            // Populate with fetched financial years
+                            financialYears.forEach((year, index) => {
+                                const option = document.createElement("option");
+                                option.value = year;
+                                // Format the display text (e.g., "2025-2026" -> "2025-26")
+                                const displayYear = year
+                                    .split("-")
+                                    .map((y, i) => (i === 1 ? y.slice(-2) : y))
+                                    .join("-");
+                                option.textContent = displayYear;
+
+                                // Select the most recent year by default
+                                if (index === 0) {
+                                    option.selected = true;
+                                }
+                                select.appendChild(option);
+                            });
+
+                            // Load initial data with the first (most recent) year
+                            if (financialYears.length > 0) {
+                                loadAnalyticsData(financialYears[0]);
+                            }
+                        } else {
+                            console.error("Failed to fetch financial years");
+                            // Fallback to hardcoded years
+                            const defaultYears = [
+                                "2025-2026",
+                                "2024-2025",
+                                "2023-2024",
+                            ];
+                            const select =
+                                document.getElementById("analytics-year");
+                            select.innerHTML = "";
+                            defaultYears.forEach((year, index) => {
+                                const option = document.createElement("option");
+                                option.value = year;
+                                const displayYear = year
+                                    .split("-")
+                                    .map((y, i) => (i === 1 ? y.slice(-2) : y))
+                                    .join("-");
+                                option.textContent = displayYear;
+                                if (index === 0) option.selected = true;
+                                select.appendChild(option);
+                            });
+                            loadAnalyticsData("2025-2026");
+                        }
+                    } catch (error) {
+                        console.error("Error loading financial years:", error);
+                        // Fallback to hardcoded years
+                        const defaultYears = [
+                            "2025-2026",
+                            "2024-2025",
+                            "2023-2024",
+                        ];
+                        const select =
+                            document.getElementById("analytics-year");
+                        select.innerHTML = "";
+                        defaultYears.forEach((year, index) => {
+                            const option = document.createElement("option");
+                            option.value = year;
+                            const displayYear = year
+                                .split("-")
+                                .map((y, i) => (i === 1 ? y.slice(-2) : y))
+                                .join("-");
+                            option.textContent = displayYear;
+                            if (index === 0) option.selected = true;
+                            select.appendChild(option);
+                        });
+                        loadAnalyticsData("2025-2026");
+                    }
+                }
+
+                // Function to get date range for financial year
+                function getFinancialYearDateRange(financialYear) {
+                    const [startYear, endYear] = financialYear
+                        .split("-")
+                        .map((y) => parseInt(y));
+                    // Handle both 4-digit and 2-digit year formats
+                    const fullStartYear =
+                        startYear < 100 ? 2000 + startYear : startYear;
+                    const fullEndYear =
+                        endYear < 100 ? 2000 + endYear : endYear;
+                    const startDate = `${fullStartYear}-04-01`; // April 1st of start year
+                    const endDate = `${fullEndYear}-03-31`; // March 31st of end year
+                    return { startDate, endDate };
+                }
+
+                // Function to filter data by financial year date range
+                function filterDataByFinancialYear(
+                    data,
+                    financialYear,
+                    dateField,
+                ) {
+                    const { startDate, endDate } =
+                        getFinancialYearDateRange(financialYear);
+
+                    return data.filter((item) => {
+                        // First try financial_year field match
+                        if (item.financial_year === financialYear) {
+                            return true;
+                        }
+
+                        // Then try date-based filtering
+                        const itemDate = item[dateField];
+                        if (!itemDate) return false;
+
+                        try {
+                            // Convert dates to YYYY-MM-DD format for comparison
+                            const itemDateStr = new Date(itemDate)
+                                .toISOString()
+                                .split("T")[0];
+                            return (
+                                itemDateStr >= startDate &&
+                                itemDateStr <= endDate
+                            );
+                        } catch (error) {
+                            console.warn(
+                                "Date parsing error:",
+                                error,
+                                itemDate,
+                            );
+                            return false;
+                        }
+                    });
+                }
+
+                async function loadAnalyticsData(year = "2025-2026") {
+                    try {
+                        // First try the original endpoints with financial year filtering
+                        const [supplyResponse, demandResponse, billResponse] =
+                            await Promise.all([
+                                fetch(`/api/public/supply-orders?year=${year}`),
+                                fetch(`/api/public/demand-orders?year=${year}`),
+                                fetch(`/api/public/bill-orders?year=${year}`),
+                            ]);
+
+                        if (
+                            !supplyResponse.ok ||
+                            !demandResponse.ok ||
+                            !billResponse.ok
+                        ) {
+                            throw new Error("Failed to fetch data");
+                        }
+
+                        let [supplyData, demandData, billData] =
+                            await Promise.all([
+                                supplyResponse.json(),
+                                demandResponse.json(),
+                                billResponse.json(),
+                            ]);
+
+                        console.log(
+                            "Supply data fetched for",
+                            year,
+                            ":",
+                            supplyData.length,
+                        );
+                        console.log(
+                            "Demand data fetched for",
+                            year,
+                            ":",
+                            demandData.length,
+                        );
+                        console.log(
+                            "Bill data fetched for",
+                            year,
+                            ":",
+                            billData.length,
+                        );
+
+                        // Ensure data is valid before processing
+                        const validSupplyData = Array.isArray(supplyData)
+                            ? supplyData
+                            : [];
+                        const validDemandData = Array.isArray(demandData)
+                            ? demandData
+                            : [];
+                        const validBillData = Array.isArray(billData)
+                            ? billData
+                            : [];
+
+                        updateAnalyticsStats(
+                            validSupplyData,
+                            validDemandData,
+                            validBillData,
+                        );
+                        createAnalyticsCharts(
+                            validSupplyData,
+                            validDemandData,
+                            validBillData,
+                        );
+
+                        // Fetch all data for year trends
+                        const [
+                            allSupplyResponse,
+                            allDemandResponse,
+                            allBillResponse,
+                        ] = await Promise.all([
+                            fetch(`/api/public/supply-orders-all`),
+                            fetch(`/api/public/demand-orders-all`),
+                            fetch(`/api/public/bill-orders-all`),
+                        ]);
+
+                        if (
+                            allSupplyResponse.ok &&
+                            allDemandResponse.ok &&
+                            allBillResponse.ok
+                        ) {
+                            const [allSupplyData, allDemandData, allBillData] =
+                                await Promise.all([
+                                    allSupplyResponse.json(),
+                                    allDemandResponse.json(),
+                                    allBillResponse.json(),
+                                ]);
+                            createFinancialYearTrends(
+                                allSupplyData,
+                                allDemandData,
+                                allBillData,
+                            );
+                        }
+
+                        // Update timestamp
+                        document.getElementById("last-updated").textContent =
+                            new Date().toLocaleString();
+                    } catch (error) {
+                        console.error("Error loading analytics data:", error);
+
+                        // Fallback to original method if new endpoints don't exist
+                        try {
+                            const [
+                                supplyResponse,
+                                demandResponse,
+                                billResponse,
+                            ] = await Promise.all([
+                                fetch(`/api/public/supply-orders?year=${year}`),
+                                fetch(`/api/public/demand-orders?year=${year}`),
+                                fetch(`/api/public/bill-orders?year=${year}`),
+                            ]);
+
+                            if (
+                                supplyResponse.ok &&
+                                demandResponse.ok &&
+                                billResponse.ok
+                            ) {
+                                const [supplyData, demandData, billData] =
+                                    await Promise.all([
+                                        supplyResponse.json(),
+                                        demandResponse.json(),
+                                        billResponse.json(),
+                                    ]);
+
+                                updateAnalyticsStats(
+                                    supplyData,
+                                    demandData,
+                                    billData,
+                                );
+                                createAnalyticsCharts(
+                                    supplyData,
+                                    demandData,
+                                    billData,
+                                );
+                                document.getElementById(
+                                    "last-updated",
+                                ).textContent = new Date().toLocaleString();
+                            } else {
+                                throw new Error("Fallback also failed");
+                            }
+                        } catch (fallbackError) {
+                            console.error("Fallback error:", fallbackError);
+
+                            // Show error indicators
+                            const elements = [
+                                "supply-count",
+                                "demand-count",
+                                "bill-count",
+                                "supply-value",
+                                "demand-value",
+                                "bill-value",
+                            ];
+                            elements.forEach((el) => {
+                                const element = document.getElementById(
+                                    `analytics-${el}`,
+                                );
+                                if (element) element.textContent = "Loading...";
+                            });
+
+                            // Try to load data directly from API
+                            setTimeout(() => {
+                                loadAnalyticsData(year);
+                            }, 2000);
+                        }
+                    }
+                }
+
+                function updateAnalyticsStats(
+                    supplyData,
+                    demandData,
+                    billData,
+                ) {
+                    // Count statistics with animation
+                    const totalSupply = supplyData.length;
+                    const totalDemand = demandData.length;
+                    const totalBill = billData.length;
+
+                    // Enhanced value calculations including all relevant fields
+                    const supplyValue = supplyData.reduce((sum, order) => {
+                        return (
+                            sum +
+                            (parseFloat(order.build_up || 0) +
+                                parseFloat(order.maint || 0) +
+                                parseFloat(order.misc || 0) +
+                                parseFloat(order.project_less_2cr || 0) +
+                                parseFloat(order.project_more_2cr || 0))
+                        );
+                    }, 0);
+
+                    const demandValue = demandData.reduce((sum, order) => {
+                        return sum + parseFloat(order.est_cost || 0);
+                    }, 0);
+
+                    const billValue = billData.reduce((sum, bill) => {
+                        return (
+                            sum +
+                            (parseFloat(bill.build_up || 0) +
+                                parseFloat(bill.maintenance || 0) +
+                                parseFloat(bill.project_less_2cr || 0) +
+                                parseFloat(bill.project_more_2cr || 0))
+                        );
+                    }, 0);
+
+                    // Animate counter updates
+                    animateCounter("analytics-supply-count", totalSupply);
+                    animateCounter("analytics-demand-count", totalDemand);
+                    animateCounter("analytics-bill-count", totalBill);
+                    animateCounter("analytics-supply-value", supplyValue, true);
+                    animateCounter("analytics-demand-value", demandValue, true);
+                    animateCounter("analytics-bill-value", billValue, true);
+                }
+
+                function animateCounter(
+                    elementId,
+                    targetValue,
+                    isDecimal = false,
+                ) {
+                    const element = document.getElementById(elementId);
+                    if (!element) return;
+
+                    const startValue = 0;
+                    const duration = 1500;
+                    const startTime = performance.now();
+
+                    function updateCounter(currentTime) {
+                        const elapsed = currentTime - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+
+                        // Easing function for smooth animation
+                        const easeOut = 1 - Math.pow(1 - progress, 3);
+                        const currentValue =
+                            startValue + (targetValue - startValue) * easeOut;
+
+                        if (isDecimal) {
+                            element.textContent = currentValue.toFixed(2);
+                        } else {
+                            element.textContent = Math.floor(currentValue);
+                        }
+
+                        if (progress < 1) {
+                            requestAnimationFrame(updateCounter);
+                        }
+                    }
+
+                    requestAnimationFrame(updateCounter);
+                }
+
+                function createAnalyticsCharts(
+                    supplyData,
+                    demandData,
+                    billData,
+                ) {
+                    createTrendChart(supplyData, demandData, billData);
+                    createDistributionChart(supplyData, demandData, billData);
+                    createValueChart(supplyData, demandData, billData);
+                }
+
+                function createFinancialYearTrends(
+                    allSupplyData,
+                    allDemandData,
+                    allBillData,
+                ) {
+                    createYearlyTrendChart(
+                        allSupplyData,
+                        allDemandData,
+                        allBillData,
+                    );
+                    createYearlyValueChart(
+                        allSupplyData,
+                        allDemandData,
+                        allBillData,
+                    );
+                }
+
+                function createYearlyTrendChart(
+                    allSupplyData,
+                    allDemandData,
+                    allBillData,
+                ) {
+                    const ctx = document.getElementById(
+                        "analytics-yearly-trend-chart",
+                    );
+                    if (!ctx) {
+                        console.warn("Yearly trend chart canvas not found");
+                        return;
+                    }
+
+                    if (analyticsCharts.yearlyTrend) {
+                        analyticsCharts.yearlyTrend.destroy();
+                    }
+
+                    // Financial years to analyze
+                    const financialYears = [
+                        "2023-2024",
+                        "2024-2025",
+                        "2025-2026",
+                    ];
+                    const yearlyData = {
+                        supply: [],
+                        demand: [],
+                        bill: [],
+                    };
+
+                    financialYears.forEach((year) => {
+                        const supplyCount = filterDataByFinancialYear(
+                            allSupplyData,
+                            year,
+                            "original_date",
+                        ).length;
+                        const demandCount = filterDataByFinancialYear(
+                            allDemandData,
+                            year,
+                            "demand_date",
+                        ).length;
+                        const billCount = filterDataByFinancialYear(
+                            allBillData,
+                            year,
+                            "bill_control_date",
+                        ).length;
+
+                        yearlyData.supply.push(supplyCount);
+                        yearlyData.demand.push(demandCount);
+                        yearlyData.bill.push(billCount);
+                    });
+
+                    analyticsCharts.yearlyTrend = new Chart(
+                        ctx.getContext("2d"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: financialYears.map((year) =>
+                                    year.replace("-", "-"),
+                                ),
+                                datasets: [
+                                    {
+                                        label: "Supply Orders",
+                                        data: yearlyData.supply,
+                                        backgroundColor:
+                                            "rgba(59, 130, 246, 0.7)",
+                                        borderColor: "#3B82F6",
+                                        borderWidth: 2,
+                                        borderRadius: 6,
+                                        borderSkipped: false,
+                                    },
+                                    {
+                                        label: "Demand Orders",
+                                        data: yearlyData.demand,
+                                        backgroundColor:
+                                            "rgba(16, 185, 129, 0.7)",
+                                        borderColor: "#10B981",
+                                        borderWidth: 2,
+                                        borderRadius: 6,
+                                        borderSkipped: false,
+                                    },
+                                    {
+                                        label: "Bill Orders",
+                                        data: yearlyData.bill,
+                                        backgroundColor:
+                                            "rgba(245, 158, 11, 0.7)",
+                                        borderColor: "#F59E0B",
+                                        borderWidth: 2,
+                                        borderRadius: 6,
+                                        borderSkipped: false,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: {
+                                    intersect: false,
+                                    mode: "index",
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: "bottom",
+                                        labels: {
+                                            padding: 20,
+                                            usePointStyle: true,
+                                        },
+                                    },
+                                    tooltip: {
+                                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                        titleColor: "white",
+                                        bodyColor: "white",
+                                        borderColor: "#3B82F6",
+                                        borderWidth: 1,
+                                        callbacks: {
+                                            label: function (context) {
+                                                return `${context.dataset.label}: ${context.parsed.y} orders`;
+                                            },
+                                        },
+                                    },
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            stepSize: 1,
+                                            callback: function (value) {
+                                                return Math.floor(value);
+                                            },
+                                        },
+                                        grid: {
+                                            color: "rgba(0, 0, 0, 0.1)",
+                                        },
+                                    },
+                                    x: {
+                                        grid: {
+                                            display: false,
+                                        },
+                                    },
+                                },
+                                animation: {
+                                    duration: 2000,
+                                    easing: "easeInOutQuart",
+                                },
+                            },
+                        },
+                    );
+                }
+
+                function createYearlyValueChart(
+                    allSupplyData,
+                    allDemandData,
+                    allBillData,
+                ) {
+                    const ctx = document.getElementById(
+                        "analytics-yearly-value-chart",
+                    );
+                    if (!ctx) {
+                        console.warn("Yearly value chart canvas not found");
+                        return;
+                    }
+
+                    if (analyticsCharts.yearlyValue) {
+                        analyticsCharts.yearlyValue.destroy();
+                    }
+
+                    // Financial years to analyze
+                    const financialYears = [
+                        "2023-2024",
+                        "2024-2025",
+                        "2025-2026",
+                    ];
+                    const yearlyValues = {
+                        supply: [],
+                        demand: [],
+                        bill: [],
+                    };
+
+                    financialYears.forEach((year) => {
+                        const supplyData = filterDataByFinancialYear(
+                            allSupplyData,
+                            year,
+                            "original_date",
+                        );
+                        const demandData = filterDataByFinancialYear(
+                            allDemandData,
+                            year,
+                            "demand_date",
+                        );
+                        const billData = filterDataByFinancialYear(
+                            allBillData,
+                            year,
+                            "bill_control_date",
+                        );
+
+                        const supplyValue = supplyData.reduce((sum, order) => {
+                            return (
+                                sum +
+                                (parseFloat(order.build_up || 0) +
+                                    parseFloat(order.maint || 0) +
+                                    parseFloat(order.misc || 0) +
+                                    parseFloat(order.project_less_2cr || 0) +
+                                    parseFloat(order.project_more_2cr || 0))
+                            );
+                        }, 0);
+
+                        const demandValue = demandData.reduce((sum, order) => {
+                            return sum + parseFloat(order.est_cost || 0);
+                        }, 0);
+
+                        const billValue = billData.reduce((sum, bill) => {
+                            return (
+                                sum +
+                                (parseFloat(bill.build_up || 0) +
+                                    parseFloat(bill.maintenance || 0) +
+                                    parseFloat(bill.project_less_2cr || 0) +
+                                    parseFloat(bill.project_more_2cr || 0))
+                            );
+                        }, 0);
+
+                        yearlyValues.supply.push(supplyValue);
+                        yearlyValues.demand.push(demandValue);
+                        yearlyValues.bill.push(billValue);
+                    });
+
+                    analyticsCharts.yearlyValue = new Chart(
+                        ctx.getContext("2d"),
+                        {
+                            type: "line",
+                            data: {
+                                labels: financialYears.map((year) =>
+                                    year.replace("-", "-"),
+                                ),
+                                datasets: [
+                                    {
+                                        label: "Supply Value (₹L)",
+                                        data: yearlyValues.supply,
+                                        borderColor: "#3B82F6",
+                                        backgroundColor:
+                                            "rgba(59, 130, 246, 0.1)",
+                                        tension: 0.4,
+                                        fill: true,
+                                        pointBackgroundColor: "#3B82F6",
+                                        pointBorderColor: "#1D4ED8",
+                                        pointRadius: 6,
+                                        pointHoverRadius: 8,
+                                        borderWidth: 3,
+                                    },
+                                    {
+                                        label: "Demand Value (₹L)",
+                                        data: yearlyValues.demand,
+                                        borderColor: "#10B981",
+                                        backgroundColor:
+                                            "rgba(16, 185, 129, 0.1)",
+                                        tension: 0.4,
+                                        fill: true,
+                                        pointBackgroundColor: "#10B981",
+                                        pointBorderColor: "#059669",
+                                        pointRadius: 6,
+                                        pointHoverRadius: 8,
+                                        borderWidth: 3,
+                                    },
+                                    {
+                                        label: "Bill Value (₹L)",
+                                        data: yearlyValues.bill,
+                                        borderColor: "#F59E0B",
+                                        backgroundColor:
+                                            "rgba(245, 158, 11, 0.1)",
+                                        tension: 0.4,
+                                        fill: true,
+                                        pointBackgroundColor: "#F59E0B",
+                                        pointBorderColor: "#D97706",
+                                        pointRadius: 6,
+                                        pointHoverRadius: 8,
+                                        borderWidth: 3,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: {
+                                    intersect: false,
+                                    mode: "index",
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: "bottom",
+                                        labels: {
+                                            padding: 20,
+                                            usePointStyle: true,
+                                        },
+                                    },
+                                    tooltip: {
+                                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                        titleColor: "white",
+                                        bodyColor: "white",
+                                        borderColor: "#3B82F6",
+                                        borderWidth: 1,
+                                        callbacks: {
+                                            label: function (context) {
+                                                return `${context.dataset.label}: ₹${context.parsed.y.toFixed(2)}L`;
+                                            },
+                                        },
+                                    },
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            callback: function (value) {
+                                                return (
+                                                    "₹" + value.toFixed(0) + "L"
+                                                );
+                                            },
+                                        },
+                                        grid: {
+                                            color: "rgba(0, 0, 0, 0.1)",
+                                        },
+                                    },
+                                    x: {
+                                        grid: {
+                                            color: "rgba(0, 0, 0, 0.1)",
+                                        },
+                                    },
+                                },
+                                animation: {
+                                    duration: 2000,
+                                    easing: "easeInOutQuart",
+                                },
+                            },
+                        },
+                    );
+                }
+
+                function createTrendChart(supplyData, demandData, billData) {
+                    const ctx = document.getElementById(
+                        "analytics-trend-chart",
+                    );
+                    if (!ctx) {
+                        console.warn("Trend chart canvas not found");
+                        return;
+                    }
+
+                    if (analyticsCharts.trend) {
+                        analyticsCharts.trend.destroy();
+                    }
+
+                    // Financial year months (April to March)
+                    const financialYearMonths = [
+                        "Apr",
+                        "May",
+                        "Jun",
+                        "Jul",
+                        "Aug",
+                        "Sep",
+                        "Oct",
+                        "Nov",
+                        "Dec",
+                        "Jan",
+                        "Feb",
+                        "Mar",
+                    ];
+                    const monthlyData = {};
+
+                    financialYearMonths.forEach((month) => {
+                        monthlyData[month] = { Supply: 0, Demand: 0, Bill: 0 };
+                    });
+
+                    // Get the selected financial year
+                    const selectedYear =
+                        document.getElementById("analytics-year").value;
+                    console.log(
+                        "Selected financial year for trend chart:",
+                        selectedYear,
+                    );
+
+                    // Parse the year format (e.g., "2025-2026" or "2025-26")
+                    const yearParts = selectedYear.split("-");
+                    let startYear = parseInt(yearParts[0]);
+                    let endYear = parseInt(yearParts[1]);
+
+                    // Handle 2-digit end year format (e.g., "2025-26")
+                    if (endYear < 100) {
+                        endYear = 2000 + endYear;
+                    }
+
+                    console.log(
+                        "Processing data for financial year:",
+                        selectedYear,
+                        "Start year:",
+                        startYear,
+                        "End year:",
+                        endYear,
+                    );
+                    console.log("Supply data count:", supplyData?.length || 0);
+                    console.log("Demand data count:", demandData?.length || 0);
+                    console.log("Bill data count:", billData?.length || 0);
+
+                    // Process each dataset with specific date fields
+                    const datasets = [
+                        {
+                            data: supplyData || [],
+                            type: "Supply",
+                            dateField: "so_date",
+                        },
+                        {
+                            data: demandData || [],
+                            type: "Demand",
+                            dateField: "demand_date",
+                        },
+                        {
+                            data: billData || [],
+                            type: "Bill",
+                            dateField: "bill_control_date",
+                        },
+                    ];
+
+                    datasets.forEach(({ data, type, dateField }) => {
+                        console.log(
+                            `Processing ${type} data (${data.length} records) using ${dateField}`,
+                        );
+
+                        if (Array.isArray(data)) {
+                            data.forEach((item, index) => {
+                                const itemDate = item[dateField];
+
+                                if (itemDate) {
+                                    try {
+                                        const dateObj = new Date(itemDate);
+                                        if (!isNaN(dateObj.getTime())) {
+                                            const month = dateObj.getMonth(); // 0-11 (Jan=0, Dec=11)
+                                            const year = dateObj.getFullYear();
+
+                                            // Month names array for conversion
+                                            const monthNames = [
+                                                "Jan",
+                                                "Feb",
+                                                "Mar",
+                                                "Apr",
+                                                "May",
+                                                "Jun",
+                                                "Jul",
+                                                "Aug",
+                                                "Sep",
+                                                "Oct",
+                                                "Nov",
+                                                "Dec",
+                                            ];
+                                            const monthName = monthNames[month];
+
+                                            // Check if date falls within the selected financial year
+                                            let isInFinancialYear = false;
+
+                                            // Financial year runs from April of start year to March of end year
+                                            if (
+                                                (year === startYear &&
+                                                    month >= 3) || // April (3) to December (11) of start year
+                                                (year === endYear && month <= 2)
+                                            ) {
+                                                // January (0) to March (2) of end year
+                                                isInFinancialYear = true;
+                                            }
+
+                                            if (
+                                                isInFinancialYear &&
+                                                monthlyData[monthName] !==
+                                                    undefined
+                                            ) {
+                                                monthlyData[monthName][type]++;
+                                                if (index < 3) {
+                                                    // Log first 3 entries for debugging
+                                                    console.log(
+                                                        `Added ${type} order for ${monthName} ${year}: ${item.supply_order_no || item.imms_demand_no || "N/A"} (${dateField}: ${itemDate})`,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.warn(
+                                            "Invalid date format:",
+                                            itemDate,
+                                            error,
+                                        );
+                                    }
+                                } else {
+                                    if (index < 3) {
+                                        // Log first 3 missing dates for debugging
+                                        console.warn(
+                                            `Missing ${dateField} for ${type} item:`,
+                                            item,
+                                        );
+                                    }
+                                }
+                            });
+                        }
+                    });
+
+                    console.log(
+                        "Final monthly data for trend chart:",
+                        selectedYear,
+                        ":",
+                        monthlyData,
+                    );
+
+                    // Calculate totals for verification
+                    const totals = { Supply: 0, Demand: 0, Bill: 0 };
+                    financialYearMonths.forEach((month) => {
+                        totals.Supply += monthlyData[month].Supply;
+                        totals.Demand += monthlyData[month].Demand;
+                        totals.Bill += monthlyData[month].Bill;
+                    });
+                    console.log("Chart totals:", totals);
+
+                    analyticsCharts.trend = new Chart(ctx.getContext("2d"), {
+                        type: "line",
+                        data: {
+                            labels: financialYearMonths,
+                            datasets: [
+                                {
+                                    label: "Supply Orders",
+                                    data: financialYearMonths.map(
+                                        (month) => monthlyData[month].Supply,
+                                    ),
+                                    borderColor: "#3B82F6",
+                                    backgroundColor: "rgba(59, 130, 246, 0.1)",
+                                    tension: 0.4,
+                                    fill: true,
+                                    pointBackgroundColor: "#3B82F6",
+                                    pointBorderColor: "#1D4ED8",
+                                    pointRadius: 5,
+                                    pointHoverRadius: 8,
+                                },
+                                {
+                                    label: "Demand Orders",
+                                    data: financialYearMonths.map(
+                                        (month) => monthlyData[month].Demand,
+                                    ),
+                                    borderColor: "#10B981",
+                                    backgroundColor: "rgba(16, 185, 129, 0.1)",
+                                    tension: 0.4,
+                                    fill: true,
+                                    pointBackgroundColor: "#10B981",
+                                    pointBorderColor: "#059669",
+                                    pointRadius: 5,
+                                    pointHoverRadius: 8,
+                                },
+                                {
+                                    label: "Bill Orders",
+                                    data: financialYearMonths.map(
+                                        (month) => monthlyData[month].Bill,
+                                    ),
+                                    borderColor: "#F59E0B",
+                                    backgroundColor: "rgba(245, 158, 11, 0.1)",
+                                    tension: 0.4,
+                                    fill: true,
+                                    pointBackgroundColor: "#F59E0B",
+                                    pointBorderColor: "#D97706",
+                                    pointRadius: 5,
+                                    pointHoverRadius: 8,
+                                },
+                            ],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: "index",
+                            },
+                            plugins: {
+                                legend: {
+                                    position: "bottom",
+                                    labels: {
+                                        padding: 20,
+                                        usePointStyle: true,
+                                    },
+                                },
+                                tooltip: {
+                                    backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                    titleColor: "white",
+                                    bodyColor: "white",
+                                    borderColor: "#3B82F6",
+                                    borderWidth: 1,
+                                    callbacks: {
+                                        label: function (context) {
+                                            return `${context.dataset.label}: ${context.parsed.y} orders`;
+                                        },
+                                    },
+                                },
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1,
+                                        callback: function (value) {
+                                            return Math.floor(value);
+                                        },
+                                    },
+                                    grid: {
+                                        color: "rgba(0, 0, 0, 0.1)",
+                                    },
+                                },
+                                x: {
+                                    grid: {
+                                        color: "rgba(0, 0, 0, 0.1)",
+                                    },
+                                },
+                            },
+                            animation: {
+                                duration: 2000,
+                                easing: "easeInOutQuart",
+                            },
+                        },
+                    });
+                }
+
+                function createDistributionChart(
+                    supplyData,
+                    demandData,
+                    billData,
+                ) {
+                    const ctx = document.getElementById(
+                        "analytics-distribution-chart",
+                    );
+                    if (!ctx) {
+                        console.warn("Distribution chart canvas not found");
+                        return;
+                    }
+
+                    if (analyticsCharts.distribution) {
+                        analyticsCharts.distribution.destroy();
+                    }
+
+                    const supplyCount = Array.isArray(supplyData)
+                        ? supplyData.length
+                        : 0;
+                    const demandCount = Array.isArray(demandData)
+                        ? demandData.length
+                        : 0;
+                    const billCount = Array.isArray(billData)
+                        ? billData.length
+                        : 0;
+                    const totalOrders = supplyCount + demandCount + billCount;
+
+                    analyticsCharts.distribution = new Chart(
+                        ctx.getContext("2d"),
+                        {
+                            type: "doughnut",
+                            data: {
+                                labels: [
+                                    "Supply Orders",
+                                    "Demand Orders",
+                                    "Bill Orders",
+                                ],
+                                datasets: [
+                                    {
+                                        data: [
+                                            supplyCount,
+                                            demandCount,
+                                            billCount,
+                                        ],
+                                        backgroundColor: [
+                                            "rgba(59, 130, 246, 0.8)",
+                                            "rgba(16, 185, 129, 0.8)",
+                                            "rgba(245, 158, 11, 0.8)",
+                                        ],
+                                        borderColor: [
+                                            "#3B82F6",
+                                            "#10B981",
+                                            "#F59E0B",
+                                        ],
+                                        borderWidth: 3,
+                                        hoverOffset: 10,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                cutout: "60%",
+                                plugins: {
+                                    legend: {
+                                        position: "bottom",
+                                        labels: {
+                                            padding: 20,
+                                            usePointStyle: true,
+                                        },
+                                    },
+                                    tooltip: {
+                                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                        titleColor: "white",
+                                        bodyColor: "white",
+                                        borderColor: "#3B82F6",
+                                        borderWidth: 1,
+                                        callbacks: {
+                                            label: function (context) {
+                                                const percentage = (
+                                                    (context.parsed /
+                                                        totalOrders) *
+                                                    100
+                                                ).toFixed(1);
+                                                return `${context.label}: ${context.parsed} orders (${percentage}%)`;
+                                            },
+                                        },
+                                    },
+                                },
+                                animation: {
+                                    animateRotate: true,
+                                    duration: 2000,
+                                },
+                            },
+                        },
+                    );
+                }
+
+                function createValueChart(supplyData, demandData, billData) {
+                    const ctx = document.getElementById(
+                        "analytics-value-chart",
+                    );
+                    if (!ctx) {
+                        console.warn("Value chart canvas not found");
+                        return;
+                    }
+
+                    if (analyticsCharts.value) {
+                        analyticsCharts.value.destroy();
+                    }
+
+                    // Enhanced value calculations with null checks
+                    const supplyValue = Array.isArray(supplyData)
+                        ? supplyData.reduce((sum, order) => {
+                              const buildUp = parseFloat(order.build_up || 0);
+                              const maint = parseFloat(order.maint || 0);
+                              const misc = parseFloat(order.misc || 0);
+                              const projectLess = parseFloat(
+                                  order.project_less_2cr || 0,
+                              );
+                              const projectMore = parseFloat(
+                                  order.project_more_2cr || 0,
+                              );
+                              return (
+                                  sum +
+                                  buildUp +
+                                  maint +
+                                  misc +
+                                  projectLess +
+                                  projectMore
+                              );
+                          }, 0)
+                        : 0;
+
+                    const demandValue = Array.isArray(demandData)
+                        ? demandData.reduce((sum, order) => {
+                              return sum + parseFloat(order.est_cost || 0);
+                          }, 0)
+                        : 0;
+
+                    const billValue = Array.isArray(billData)
+                        ? billData.reduce((sum, bill) => {
+                              const buildUp = parseFloat(bill.build_up || 0);
+                              const maintenance = parseFloat(
+                                  bill.maintenance || 0,
+                              );
+                              const projectLess = parseFloat(
+                                  bill.project_less_2cr || 0,
+                              );
+                              const projectMore = parseFloat(
+                                  bill.project_more_2cr || 0,
+                              );
+                              return (
+                                  sum +
+                                  buildUp +
+                                  maintenance +
+                                  projectLess +
+                                  projectMore
+                              );
+                          }, 0)
+                        : 0;
+
+                    analyticsCharts.value = new Chart(ctx.getContext("2d"), {
+                        type: "bar",
+                        data: {
+                            labels: [
+                                "Supply Orders",
+                                "Demand Orders",
+                                "Bills Processed",
+                            ],
+                            datasets: [
+                                {
+                                    label: "Value (₹ Lakhs)",
+                                    data: [supplyValue, demandValue, billValue],
+                                    backgroundColor: [
+                                        "rgba(59, 130, 246, 0.8)",
+                                        "rgba(16, 185, 129, 0.8)",
+                                        "rgba(245, 158, 11, 0.8)",
+                                    ],
+                                    borderColor: [
+                                        "#1D4ED8",
+                                        "#059669",
+                                        "#D97706",
+                                    ],
+                                    borderWidth: 2,
+                                    borderRadius: 8,
+                                    borderSkipped: false,
+                                },
+                            ],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                },
+                                tooltip: {
+                                    backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                    titleColor: "white",
+                                    bodyColor: "white",
+                                    borderColor: "#3B82F6",
+                                    borderWidth: 1,
+                                    callbacks: {
+                                        label: function (context) {
+                                            return `Value: ₹${context.parsed.y.toFixed(2)}L`;
+                                        },
+                                    },
+                                },
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function (value) {
+                                            return "₹" + value.toFixed(0) + "L";
+                                        },
+                                    },
+                                    grid: {
+                                        color: "rgba(0, 0, 0, 0.1)",
+                                    },
+                                },
+                                x: {
+                                    grid: {
+                                        display: false,
+                                    },
+                                },
+                            },
+                            animation: {
+                                duration: 2000,
+                                easing: "easeInOutBounce",
+                            },
+                        },
+                    });
+                }
+
+                // Year change handler
+                document
+                    .getElementById("analytics-year")
+                    .addEventListener("change", function () {
+                        loadAnalyticsData(this.value);
+                    });
+
+                // Auto refresh every 30 seconds
+                setInterval(() => {
+                    const selectedYear =
+                        document.getElementById("analytics-year").value;
+                    if (selectedYear) {
+                        loadAnalyticsData(selectedYear);
+                    }
+                }, 30000);
+
+                // Listen for storage events to detect changes from the main application
+                window.addEventListener("storage", (e) => {
+                    if (e.key === "dataUpdated") {
+                        console.log(
+                            "Data update detected, refreshing charts...",
+                        );
+                        const selectedYear =
+                            document.getElementById("analytics-year").value;
+                        if (selectedYear) {
+                            setTimeout(() => {
+                                loadAnalyticsData(selectedYear);
+                            }, 1000); // Small delay to ensure data is saved
+                        }
+                    }
+                });
+
+                // Also listen for focus events to refresh when user returns to homepage
+                window.addEventListener("focus", () => {
+                    const selectedYear =
+                        document.getElementById("analytics-year").value;
+                    if (selectedYear) {
+                        loadAnalyticsData(selectedYear);
+                    }
+                });
+
+                // Initialize WebSocket connection for real-time updates
+                let socket = null;
+                try {
+                    socket = io();
+
+                    socket.on("connect", () => {
+                        console.log("Homepage connected to real-time server");
+                    });
+
+                    socket.on("homepage-data-update", (updateData) => {
+                        console.log(
+                            "Homepage received data update:",
+                            updateData,
+                        );
+                        // Refresh analytics with a small delay to ensure data is saved
+                        setTimeout(() => {
+                            const selectedYear =
+                                document.getElementById("analytics-year").value;
+                            if (selectedYear) {
+                                loadAnalyticsData(selectedYear);
+                            }
+                        }, 500);
+                    });
+
+                    socket.on("disconnect", () => {
+                        console.log(
+                            "Homepage disconnected from real-time server",
+                        );
+                    });
+                } catch (error) {
+                    console.warn("WebSocket connection failed:", error);
+                }
+
+                // Load financial years first, then load analytics data
+                loadFinancialYears();
+
+                // Load visitor counter
+                loadVisitorCounter();
+            });
+
+            // Visitor counter functionality
+            async function loadVisitorCounter() {
+                try {
+                    // First, increment the visitor count
+                    const response = await fetch("/api/public/visitor-count");
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateVisitorDisplay(data.count);
+                    } else {
+                        console.error("Failed to load visitor count");
+                        updateVisitorDisplay("N/A");
+                    }
+                } catch (error) {
+                    console.error("Error loading visitor count:", error);
+                    updateVisitorDisplay("N/A");
+                }
+            }
+
+            function updateVisitorDisplay(count) {
+                const visitorCountElement =
+                    document.getElementById("visitor-count");
+                if (visitorCountElement) {
+                    // Add a nice animation effect
+                    visitorCountElement.style.transform = "scale(1.2)";
+                    visitorCountElement.style.color = "#FFD700";
+
+                    setTimeout(() => {
+                        visitorCountElement.textContent =
+                            count.toLocaleString();
+                        visitorCountElement.style.transform = "scale(1)";
+                        visitorCountElement.style.color = "white";
+                    }, 200);
+                }
+            }
+
+            // Auto-refresh visitor count every 30 seconds (to show other visitors)
+            setInterval(async () => {
+                try {
+                    const response = await fetch(
+                        "/api/public/visitor-count-display",
+                    );
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateVisitorDisplay(data.count);
+                    }
+                } catch (error) {
+                    console.error("Error refreshing visitor count:", error);
+                }
+            }, 30000);
+        </script>
+    </body>
+</html>
