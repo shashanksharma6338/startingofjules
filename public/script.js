@@ -2965,7 +2965,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (type === "supply") {
       return {
         serial_no: serialNo,
-        supply_order_no: `ADRDE/AS-QMS/MMG/PM/8${String(serialNo).padStart(3, "0")}`,
+        supply_order_no: `organization 2/AS-QMS/MMG/PM/8${String(serialNo).padStart(3, "0")}`,
         so_date: "", // Initialize SO Date as empty
         firm_name: "",
         nomenclature: "",
@@ -2994,7 +2994,7 @@ document.addEventListener("DOMContentLoaded", () => {
         serial_no: serialNo,
         imms_demand_no: "",
         demand_date: "",
-        mmg_control_no: `ADRDE/AS-QMS/MMG/PM/8/${String(serialNo).padStart(3, "0")}`,
+        mmg_control_no: `organization 2/AS-QMS/MMG/PM/8/${String(serialNo).padStart(3, "0")}`,
         control_date: "",
         nomenclature: "",
         quantity: "",
@@ -4088,9 +4088,9 @@ document.addEventListener("DOMContentLoaded", () => {
         order.amendment,
       ]);
 
-      // Create workbook and worksheet with DRDO header
+      // Create workbook and worksheet with organization header
       const headerInfo = [
-        ["DEFENCE RESEARCH AND DEVELOPMENT ORGANISATION"],
+        ["organization"],
         ["MATERIAL MANAGEMENT GROUP"],
         [`SANCTION CODE REGISTER - ${section.toUpperCase()} - ${currentYear}`],
         ["Generated on: " + new Date().toLocaleDateString()],
@@ -4125,7 +4125,7 @@ document.addEventListener("DOMContentLoaded", () => {
       XLSX.writeFile(workbook, filename);
 
       showAlert(
-        `${section.charAt(0).toUpperCase() + section.slice(1)} sanction register exported successfully as ${filename} with DRDO header`,
+        `${section.charAt(0).toUpperCase() + section.slice(1)} sanction register exported successfully as ${filename} with organization header`,
         "success",
       );
     } catch (error) {
