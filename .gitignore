@@ -1,0 +1,4 @@
+node_modules
+.env
+visitor_count.txt
+backups

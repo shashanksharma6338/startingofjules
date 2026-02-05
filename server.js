@@ -20,6 +20,16 @@ const {
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// Shared session store for express and socket.io
+const sessionStore = new (require('express-session').MemoryStore)({
+    checkPeriod: 86400000, // Clean up expired sessions every 24 hours
+    max: 1000, // Maximum number of sessions to store
+    dispose: (key, sess) => {
+        console.log('Session disposed:', key);
+    }
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -45,13 +55,7 @@ app.use(session({
         return Date.now().toString(36) + Math.random().toString(36).substring(2);
     },
     // Memory store optimization for high concurrency
-    store: new (require('express-session').MemoryStore)({
-        checkPeriod: 86400000, // Clean up expired sessions every 24 hours
-        max: 1000, // Maximum number of sessions to store
-        dispose: (key, sess) => {
-            console.log('Session disposed:', key);
-        }
-    })
+    store: sessionStore
 }));
 
 app.use(bodyParser.json());
@@ -59,7 +63,7 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Serve permissions management page
-app.get('/permissions', (req, res) => {
+app.get('/permissions', requireSuperAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'permissions.html'));
 });
 
@@ -294,15 +298,51 @@ app.use(
 // Initialize authentication system
 initializeAuth();
 
-// WebSocket authentication middleware
+// WebSocket authentication middleware - secure version linked to express session
 io.use((socket, next) => {
-    const sessionId = socket.handshake.auth.sessionId;
-    if (sessionId) {
-        socket.sessionId = sessionId;
-        next();
-    } else {
-        next(new Error("Authentication required"));
+    const cookieHeader = socket.handshake.headers.cookie;
+    if (!cookieHeader) {
+        return next(new Error("Authentication required: No cookies found"));
     }
+
+    // Simple cookie parser
+    const cookies = {};
+    cookieHeader.split(';').forEach(c => {
+        const parts = c.split('=');
+        if (parts.length >= 2) {
+            cookies[parts[0].trim()] = parts[1];
+        }
+    });
+
+    let sidCookie = cookies['sid'];
+    if (!sidCookie) {
+        return next(new Error("Authentication required: Session cookie missing"));
+    }
+
+    // Express-session cookies are prefixed with 's:' and then signed
+    // Format in cookie might be encoded: s%3A...
+    sidCookie = decodeURIComponent(sidCookie);
+
+    if (!sidCookie.startsWith('s:')) {
+        return next(new Error("Authentication required: Invalid session cookie format"));
+    }
+
+    // The session ID is between 's:' and the first '.'
+    const sid = sidCookie.substring(2).split('.')[0];
+
+    if (!sid) {
+        return next(new Error("Authentication required: Invalid session ID"));
+    }
+
+    sessionStore.get(sid, (err, session) => {
+        if (err || !session || !session.user) {
+            return next(new Error("Authentication required: Session not found or expired"));
+        }
+
+        socket.username = session.user.username;
+        socket.role = session.user.role;
+        next();
+    });
 });
 
 // Connection tracking for monitoring - optimized for 150 homepage + 100 login users
@@ -364,6 +404,13 @@ io.on("connection", (socket) => {
         if (game && game.status === 'playing') {
             // Process Ludo move
             const currentPlayer = game.players[game.currentPlayerIndex];
+
+            // Security check: Ensure it's this player's turn
+            if (currentPlayer.name !== socket.username) {
+                console.warn(`Unauthorized ludo-move attempt by ${socket.username} for player ${currentPlayer.name}`);
+                return;
+            }
+
             const piece = currentPlayer.pieces[pieceIndex];
 
             if (piece.position === -1 && diceRoll === 6) {
@@ -501,6 +548,10 @@ function broadcastDataChange(type, action, data, financialYear) {
     // Clear relevant cache entries
     dataCache.delete(`${type}-${financialYear}`);
     dataCache.delete(`dashboard-overview-${financialYear}`);
+
+    // Clear homepage cache
+    const homepageCacheKey = `public-${type}-${financialYear}`;
+    homepageCache.delete(homepageCacheKey);
 
     io.to(room).emit("data-change", {
         type,
@@ -1972,7 +2023,7 @@ app.get("/api/bill-orders", requireAuth, async (req, res) => {
     }
 });
 
-app.get("/api/supply-orders/max-serial", async (req, res) => {
+app.get("/api/supply-orders/max-serial", requireAuth, async (req, res) => {
     const { year } = req.query;
     try {
         const [rows] = await pool.query(
@@ -1986,7 +2037,7 @@ app.get("/api/supply-orders/max-serial", async (req, res) => {
     }
 });
 
-app.get("/api/demand-orders/max-serial", async (req, res) => {
+app.get("/api/demand-orders/max-serial", requireAuth, async (req, res) => {
     const { year } = req.query;
     try {
         const [rows] = await pool.query(
@@ -2000,7 +2051,7 @@ app.get("/api/demand-orders/max-serial", async (req, res) => {
     }
 });
 
-app.get("/api/bill-orders/max-serial", async (req, res) => {
+app.get("/api/bill-orders/max-serial", requireAuth, async (req, res) => {
     const { year } = req.query;
     try {
         const [rows] = await pool.query(
@@ -2029,7 +2080,7 @@ app.get("/api/imms-demand-numbers", requireAuth, async (req, res) => {
     }
 });
 
-app.get("/api/supply-orders/:id", async (req, res) => {
+app.get("/api/supply-orders/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await pool.query(
@@ -2047,7 +2098,7 @@ app.get("/api/supply-orders/:id", async (req, res) => {
     }
 });
 
-app.get("/api/demand-orders/:id", async (req, res) => {
+app.get("/api/demand-orders/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await pool.query(
@@ -2065,7 +2116,7 @@ app.get("/api/demand-orders/:id", async (req, res) => {
     }
 });
 
-app.get("/api/bill-orders/:id", async (req, res) => {
+app.get("/api/bill-orders/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await pool.query(
@@ -2083,11 +2134,7 @@ app.get("/api/bill-orders/:id", async (req, res) => {
     }
 });
 
-app.post("/api/supply-orders", requireAuth, async (req, res) => {
-    // Check if user has permission to add
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.post("/api/supply-orders", requireAuth, requirePermission('add_records'), async (req, res) => {
     const data = req.body;
     try {
         const [result] = await pool.query(
@@ -2146,10 +2193,10 @@ app.post("/api/supply-orders", requireAuth, async (req, res) => {
     }
 });
 
-app.post("/api/demand-orders", async (req, res) => {
+app.post("/api/demand-orders", requireAuth, requirePermission('add_records'), async (req, res) => {
     const data = req.body;
     try {
-        await pool.query(
+        const [result] = await pool.query(
             `INSERT INTO demand_orders (serial_no, imms_demand_no, demand_date, mmg_control_no, control_date, nomenclature, quantity, 
                 expenditure_head, code_head, rev_cap, procurement_mode, est_cost, imms_control_no, supply_order_placed, remarks, financial_year) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -2173,6 +2220,9 @@ app.post("/api/demand-orders", async (req, res) => {
             ],
         );
 
+        // Broadcast the change to all connected clients
+        broadcastDataChange('demand', 'create', { ...data, id: result.insertId }, data.financial_year);
+
         // Emit homepage data update event
         io.emit('homepage-data-update', {
             type: 'demand',
@@ -2188,10 +2238,10 @@ app.post("/api/demand-orders", async (req, res) => {
     }
 });
 
-app.post("/api/bill-orders", async (req, res) => {
+app.post("/api/bill-orders", requireAuth, requirePermission('add_records'), async (req, res) => {
     const data = req.body;
     try {
-        await pool.query(
+        const [result] = await pool.query(
             `INSERT INTO bill_orders (serial_no, bill_control_date, firm_name, supply_order_no, so_date, 
                 project_no, build_up, maintenance, project_less_2cr, project_more_2cr, 
                 procurement_mode, rev_cap, date_amount_passed, ld_amount, remarks, financial_year) 
@@ -2216,6 +2266,9 @@ app.post("/api/bill-orders", async (req, res) => {
             ],
         );
 
+        // Broadcast the change to all connected clients
+        broadcastDataChange('bill', 'create', { ...data, id: result.insertId }, data.financial_year);
+
         // Emit homepage data update event
         io.emit('homepage-data-update', {
             type: 'bill',
@@ -2231,11 +2284,7 @@ app.post("/api/bill-orders", async (req, res) => {
     }
 });
 
-app.put("/api/supply-orders/:id", requireAuth, async (req, res) => {
-    // Check if user has permission to edit
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.put("/api/supply-orders/:id", requireAuth, requirePermission('edit_records'), async (req, res) => {
     const { id } = req.params;
     const data = req.body;
     try {
@@ -2296,7 +2345,7 @@ app.put("/api/supply-orders/:id", requireAuth, async (req, res) => {
     }
 });
 
-app.put("/api/demand-orders/:id", async (req, res) => {
+app.put("/api/demand-orders/:id", requireAuth, requirePermission('edit_records'), async (req, res) => {
     const { id } = req.params;
     const data = req.body;
     try {
@@ -2325,6 +2374,18 @@ app.put("/api/demand-orders/:id", async (req, res) => {
                 id,
             ],
         );
+
+        // Broadcast the change to all connected clients
+        broadcastDataChange('demand', 'update', { ...data, id }, data.financial_year);
+
+        // Emit homepage data update event
+        io.emit('homepage-data-update', {
+            type: 'demand',
+            action: 'update',
+            financial_year: data.financial_year,
+            timestamp: new Date().toISOString()
+        });
+
         res.status(200).send();
     } catch (error) {
         console.error(error);
@@ -2332,7 +2393,7 @@ app.put("/api/demand-orders/:id", async (req, res) => {
     }
 });
 
-app.put("/api/bill-orders/:id", async (req, res) => {
+app.put("/api/bill-orders/:id", requireAuth, requirePermission('edit_records'), async (req, res) => {
     const { id } = req.params;
     const data = req.body;
     try {
@@ -2361,6 +2422,18 @@ app.put("/api/bill-orders/:id", async (req, res) => {
                 id,
             ],
         );
+
+        // Broadcast the change to all connected clients
+        broadcastDataChange('bill', 'update', { ...data, id }, data.financial_year);
+
+        // Emit homepage data update event
+        io.emit('homepage-data-update', {
+            type: 'bill',
+            action: 'update',
+            financial_year: data.financial_year,
+            timestamp: new Date().toISOString()
+        });
+
         res.status(200).send();
     } catch (error) {
         console.error(error);
@@ -2368,11 +2441,7 @@ app.put("/api/bill-orders/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/supply-orders/:id", requireAuth, async (req, res) => {
-    // Check if user has permission to delete
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.delete("/api/supply-orders/:id", requireAuth, requirePermission('delete_records'), async (req, res) => {
     const { id } = req.params;
     try {
         // Get the financial year before deletion for broadcasting
@@ -2401,10 +2470,28 @@ app.delete("/api/supply-orders/:id", requireAuth, async (req, res) => {
     }
 });
 
-app.delete("/api/demand-orders/:id", async (req, res) => {
+app.delete("/api/demand-orders/:id", requireAuth, requirePermission('delete_records'), async (req, res) => {
     const { id } = req.params;
     try {
+        // Get the financial year before deletion for broadcasting
+        const [rows] = await pool.query("SELECT financial_year FROM demand_orders WHERE id = ?", [id]);
+        const financialYear = rows[0]?.financial_year;
+
         await pool.query("DELETE FROM demand_orders WHERE id = ?", [id]);
+
+        // Broadcast the change to all connected clients
+        if (financialYear) {
+            broadcastDataChange('demand', 'delete', { id }, financialYear);
+
+            // Also emit a general data update event for homepage
+            io.emit('homepage-data-update', {
+                type: 'demand',
+                action: 'delete',
+                financial_year: financialYear,
+                timestamp: new Date().toISOString()
+            });
+        }
+
         res.status(200).send();
     } catch (error) {
         console.error(error);
@@ -2412,10 +2499,28 @@ app.delete("/api/demand-orders/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/bill-orders/:id", async (req, res) => {
+app.delete("/api/bill-orders/:id", requireAuth, requirePermission('delete_records'), async (req, res) => {
     const { id } = req.params;
     try {
+        // Get the financial year before deletion for broadcasting
+        const [rows] = await pool.query("SELECT financial_year FROM bill_orders WHERE id = ?", [id]);
+        const financialYear = rows[0]?.financial_year;
+
         await pool.query("DELETE FROM bill_orders WHERE id = ?", [id]);
+
+        // Broadcast the change to all connected clients
+        if (financialYear) {
+            broadcastDataChange('bill', 'delete', { id }, financialYear);
+
+            // Also emit a general data update event for homepage
+            io.emit('homepage-data-update', {
+                type: 'bill',
+                action: 'delete',
+                financial_year: financialYear,
+                timestamp: new Date().toISOString()
+            });
+        }
+
         res.status(200).send();
     } catch (error) {
         console.error(error);
@@ -2423,11 +2528,7 @@ app.delete("/api/bill-orders/:id", async (req, res) => {
     }
 });
 
-app.post("/api/supply-orders/move/:id", requireAuth, async (req, res) => {
-    // Check if user has permission to move rows
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.post("/api/supply-orders/move/:id", requireAuth, requirePermission('move_records'), async (req, res) => {
     const { id } = req.params;
     const { direction, financial_year } = req.body;
     try {
@@ -2460,11 +2561,7 @@ app.post("/api/supply-orders/move/:id", requireAuth, async (req, res) => {
     }
 });
 
-app.post("/api/demand-orders/move/:id", requireAuth, async (req, res) => {
-    // Check if user has permission to move rows
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.post("/api/demand-orders/move/:id", requireAuth, requirePermission('move_records'), async (req, res) => {
     const { id } = req.params;
     const { direction, financial_year } = req.body;
     try {
@@ -2497,11 +2594,7 @@ app.post("/api/demand-orders/move/:id", requireAuth, async (req, res) => {
     }
 });
 
-app.post("/api/bill-orders/move/:id", requireAuth, async (req, res) => {
-    // Check if user has permission to move rows
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.post("/api/bill-orders/move/:id", requireAuth, requirePermission('move_records'), async (req, res) => {
     const { id } = req.params;
     const { direction, financial_year } = req.body;
     try {
@@ -2686,7 +2779,7 @@ app.post("/api/bill-orders/import", requireAuth, requirePermission('import_excel
     }
 });
 
-app.get("/api/supply-backups", async (req, res) => {
+app.get("/api/supply-backups", requireAuth, async (req, res) => {
     try {
         const files = await fs.readdir(backupDirs.supply);
         res.json(files);
@@ -2696,7 +2789,7 @@ app.get("/api/supply-backups", async (req, res) => {
     }
 });
 
-app.get("/api/demand-backups", async (req, res) => {
+app.get("/api/demand-backups", requireAuth, async (req, res) => {
     try {
         const files = await fs.readdir(backupDirs.demand);
         res.json(files);
@@ -2706,7 +2799,7 @@ app.get("/api/demand-backups", async (req, res) => {
     }
 });
 
-app.get("/api/bill-backups", async (req, res) => {
+app.get("/api/bill-backups", requireAuth, async (req, res) => {
     try {
         const files = await fs.readdir(backupDirs.bill);
         res.json(files);
@@ -2716,7 +2809,7 @@ app.get("/api/bill-backups", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-gen-project-backups", async (req, res) => {
+app.get("/api/sanction-gen-project-backups", requireAuth, async (req, res) => {
     try {
         const files = await fs.readdir(backupDirs["sanction-gen-project"]);
         res.json(files);
@@ -2726,7 +2819,7 @@ app.get("/api/sanction-gen-project-backups", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-misc-backups", async (req, res) => {
+app.get("/api/sanction-misc-backups", requireAuth, async (req, res) => {
     try {
         const files = await fs.readdir(backupDirs["sanction-misc"]);
         res.json(files);
@@ -2736,7 +2829,7 @@ app.get("/api/sanction-misc-backups", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-training-backups", async (req, res) => {
+app.get("/api/sanction-training-backups", requireAuth, async (req, res) => {
     try {
         const files = await fs.readdir(backupDirs["sanction-training"]);
         res.json(files);
@@ -2747,14 +2840,22 @@ app.get("/api/sanction-training-backups", async (req, res) => {
 });
 
 // Sanction Code Register API endpoints
-app.get("/api/sanction-gen-project", async (req, res) => {
+app.get("/api/sanction-gen-project", requireAuth, async (req, res) => {
     const { year, sort = "serial_no" } = req.query;
+
+    const allowedSortColumns = [
+        "serial_no", "date", "file_no", "sanction_code", "code",
+        "np_proj", "power", "code_head", "rev_cap", "amount",
+        "uo_no", "uo_date", "amendment", "financial_year"
+    ];
+    const safeSort = allowedSortColumns.includes(sort) ? sort : "serial_no";
+
     try {
         const [rows] = await pool.query(
             `SELECT id, serial_no, DATE_FORMAT(date, '%Y-%m-%d') as date, file_no, sanction_code, code, 
                     np_proj, power, code_head, rev_cap, amount, uo_no, 
                     DATE_FORMAT(uo_date, '%Y-%m-%d') as uo_date, amendment, financial_year 
-             FROM sanction_gen_project WHERE financial_year = ? ORDER BY ${sort}`,
+             FROM sanction_gen_project WHERE financial_year = ? ORDER BY ${safeSort}`,
             [year],
         );
         res.json(rows);
@@ -2764,14 +2865,22 @@ app.get("/api/sanction-gen-project", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-misc", async (req, res) => {
+app.get("/api/sanction-misc", requireAuth, async (req, res) => {
     const { year, sort = "serial_no" } = req.query;
+
+    const allowedSortColumns = [
+        "serial_no", "date", "file_no", "sanction_code", "code",
+        "np_proj", "power", "code_head", "rev_cap", "amount",
+        "uo_no", "uo_date", "amendment", "financial_year"
+    ];
+    const safeSort = allowedSortColumns.includes(sort) ? sort : "serial_no";
+
     try {
         const [rows] = await pool.query(
             `SELECT id, serial_no, DATE_FORMAT(date, '%Y-%m-%d') as date, file_no, sanction_code, code, 
                     np_proj, power, code_head, rev_cap, amount, uo_no, 
                     DATE_FORMAT(uo_date, '%Y-%m-%d') as uo_date, amendment, financial_year 
-             FROM sanction_misc WHERE financial_year = ? ORDER BY ${sort}`,
+             FROM sanction_misc WHERE financial_year = ? ORDER BY ${safeSort}`,
             [year],
         );
         res.json(rows);
@@ -2781,14 +2890,22 @@ app.get("/api/sanction-misc", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-training", async (req, res) => {
+app.get("/api/sanction-training", requireAuth, async (req, res) => {
     const { year, sort = "serial_no" } = req.query;
+
+    const allowedSortColumns = [
+        "serial_no", "date", "file_no", "sanction_code", "code",
+        "np_proj", "power", "code_head", "rev_cap", "amount",
+        "uo_no", "uo_date", "amendment", "financial_year"
+    ];
+    const safeSort = allowedSortColumns.includes(sort) ? sort : "serial_no";
+
     try {
         const [rows] = await pool.query(
             `SELECT id, serial_no, DATE_FORMAT(date, '%Y-%m-%d') as date, file_no, sanction_code, code, 
                     np_proj, power, code_head, rev_cap, amount, uo_no, 
                     DATE_FORMAT(uo_date, '%Y-%m-%d') as uo_date, amendment, financial_year 
-             FROM sanction_training WHERE financial_year = ? ORDER BY ${sort}`,
+             FROM sanction_training WHERE financial_year = ? ORDER BY ${safeSort}`,
             [year],
         );
         res.json(rows);
@@ -2798,7 +2915,7 @@ app.get("/api/sanction-training", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-gen-project/max-serial", async (req, res) => {
+app.get("/api/sanction-gen-project/max-serial", requireAuth, async (req, res) => {
     const { year } = req.query;
     try {
         const [rows] = await pool.query(
@@ -2812,7 +2929,7 @@ app.get("/api/sanction-gen-project/max-serial", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-misc/max-serial", async (req, res) => {
+app.get("/api/sanction-misc/max-serial", requireAuth, async (req, res) => {
     const { year } = req.query;
     try {
         const [rows] = await pool.query(
@@ -2826,7 +2943,7 @@ app.get("/api/sanction-misc/max-serial", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-training/max-serial", async (req, res) => {
+app.get("/api/sanction-training/max-serial", requireAuth, async (req, res) => {
     const { year } = req.query;
     try {
         const [rows] = await pool.query(
@@ -2840,7 +2957,7 @@ app.get("/api/sanction-training/max-serial", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-gen-project/:id", async (req, res) => {
+app.get("/api/sanction-gen-project/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await pool.query(
@@ -2858,7 +2975,7 @@ app.get("/api/sanction-gen-project/:id", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-misc/:id", async (req, res) => {
+app.get("/api/sanction-misc/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await pool.query(
@@ -2876,7 +2993,7 @@ app.get("/api/sanction-misc/:id", async (req, res) => {
     }
 });
 
-app.get("/api/sanction-training/:id", async (req, res) => {
+app.get("/api/sanction-training/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await pool.query(
@@ -2894,7 +3011,7 @@ app.get("/api/sanction-training/:id", async (req, res) => {
     }
 });
 
-app.post("/api/sanction-gen-project", async (req, res) => {
+app.post("/api/sanction-gen-project", requireAuth, requirePermission('add_records'), async (req, res) => {
     const data = req.body;
     try {
         await pool.query(
@@ -2925,7 +3042,7 @@ app.post("/api/sanction-gen-project", async (req, res) => {
     }
 });
 
-app.post("/api/sanction-misc", async (req, res) => {
+app.post("/api/sanction-misc", requireAuth, requirePermission('add_records'), async (req, res) => {
     const data = req.body;
     try {
         await pool.query(
@@ -2956,7 +3073,7 @@ app.post("/api/sanction-misc", async (req, res) => {
     }
 });
 
-app.post("/api/sanction-training", async (req, res) => {
+app.post("/api/sanction-training", requireAuth, requirePermission('add_records'), async (req, res) => {
     const data = req.body;
     try {
         await pool.query(
@@ -2987,7 +3104,7 @@ app.post("/api/sanction-training", async (req, res) => {
     }
 });
 
-app.put("/api/sanction-gen-project/:id", async (req, res) => {
+app.put("/api/sanction-gen-project/:id", requireAuth, requirePermission('edit_records'), async (req, res) => {
     const { id } = req.params;
     const data = req.body;
     try {
@@ -3020,7 +3137,7 @@ app.put("/api/sanction-gen-project/:id", async (req, res) => {
     }
 });
 
-app.put("/api/sanction-misc/:id", async (req, res) => {
+app.put("/api/sanction-misc/:id", requireAuth, requirePermission('edit_records'), async (req, res) => {
     const { id } = req.params;
     const data = req.body;
     try {
@@ -3053,7 +3170,7 @@ app.put("/api/sanction-misc/:id", async (req, res) => {
     }
 });
 
-app.put("/api/sanction-training/:id", async (req, res) => {
+app.put("/api/sanction-training/:id", requireAuth, requirePermission('edit_records'), async (req, res) => {
     const { id } = req.params;
     const data = req.body;
     try {
@@ -3086,7 +3203,7 @@ app.put("/api/sanction-training/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/sanction-gen-project/:id", async (req, res) => {
+app.delete("/api/sanction-gen-project/:id", requireAuth, requirePermission('delete_records'), async (req, res) => {
     const { id } = req.params;
     try {
         await pool.query("DELETE FROM sanction_gen_project WHERE id = ?", [id]);
@@ -3097,7 +3214,7 @@ app.delete("/api/sanction-gen-project/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/sanction-misc/:id", async (req, res) => {
+app.delete("/api/sanction-misc/:id", requireAuth, requirePermission('delete_records'), async (req, res) => {
     const { id } = req.params;
     try {
         await pool.query("DELETE FROM sanction_misc WHERE id = ?", [id]);
@@ -3108,7 +3225,7 @@ app.delete("/api/sanction-misc/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/sanction-training/:id", async (req, res) => {
+app.delete("/api/sanction-training/:id", requireAuth, requirePermission('delete_records'), async (req, res) => {
     const { id } = req.params;
     try {
         await pool.query("DELETE FROM sanction_training WHERE id = ?", [id]);
@@ -3119,11 +3236,7 @@ app.delete("/api/sanction-training/:id", async (req, res) => {
     }
 });
 
-app.post("/api/sanction-gen-project/move/:id", requireAuth, async (req, res) => {
-    // Check if user has permission to move rows
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.post("/api/sanction-gen-project/move/:id", requireAuth, requirePermission('move_records'), async (req, res) => {
     const { id } = req.params;
     const { direction, financial_year } = req.body;
     try {
@@ -3156,11 +3269,7 @@ app.post("/api/sanction-gen-project/move/:id", requireAuth, async (req, res) => 
     }
 });
 
-app.post("/api/sanction-misc/move/:id", requireAuth, async (req, res) => {
-    // Check if user has permission to move rows
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.post("/api/sanction-misc/move/:id", requireAuth, requirePermission('move_records'), async (req, res) => {
     const { id } = req.params;
     const { direction, financial_year } = req.body;
     try {
@@ -3193,11 +3302,7 @@ app.post("/api/sanction-misc/move/:id", requireAuth, async (req, res) => {
     }
 });
 
-app.post("/api/sanction-training/move/:id", requireAuth, async (req, res) => {
-    // Check if user has permission to move rows
-    if (req.session.user.role === 'viewer') {
-        return res.status(403).json({ success: false, message: 'Permission denied' });
-    }
+app.post("/api/sanction-training/move/:id", requireAuth, requirePermission('move_records'), async (req, res) => {
     const { id } = req.params;
     const { direction, financial_year } = req.body;
     try {
@@ -3230,7 +3335,7 @@ app.post("/api/sanction-training/move/:id", requireAuth, async (req, res) => {
     }
 });
 
-app.post("/api/sanction-gen-project/import", async (req, res) => {
+app.post("/api/sanction-gen-project/import", requireAuth, requirePermission('import_excel'), async (req, res) => {
     const { data, financial_year } = req.body;
     try {
         if (!data || !Array.isArray(data) || data.length === 0) {
@@ -3274,7 +3379,7 @@ app.post("/api/sanction-gen-project/import", async (req, res) => {
     }
 });
 
-app.post("/api/sanction-misc/import", async (req, res) => {
+app.post("/api/sanction-misc/import", requireAuth, requirePermission('import_excel'), async (req, res) => {
     const { data, financial_year } = req.body;
     try {
         if (!data || !Array.isArray(data) || data.length === 0) {
@@ -3318,7 +3423,7 @@ app.post("/api/sanction-misc/import", async (req, res) => {
     }
 });
 
-app.post("/api/sanction-training/import", async (req, res) => {
+app.post("/api/sanction-training/import", requireAuth, requirePermission('import_excel'), async (req, res) => {
     const { data, financial_year } = req.body;
     try {
         if (!data || !Array.isArray(data) || data.length === 0) {
@@ -3386,8 +3491,8 @@ app.get("/api/dashboard/overview", requireAuth, async (req, res) => {
             totalSupply: supplyResult[0][0].count,
             totalDemand: demandResult[0][0].count,
             totalBill: billResult[0][0].count,
-            deliveredOrders: deliveredResult[0][0].count,
-            totalValue: totalValueResult[0][0].total || 0
+            deliveredOrders: deliveredResult[0].count,
+            totalValue: totalValueResult[0].total || 0
         });
     } catch (error) {
         console.error("Dashboard overview error:", error);
@@ -3426,9 +3531,9 @@ app.get("/api/dashboard/trends", requireAuth, async (req, res) => {
         );
 
         res.json({
-            supply: monthlySupply[0],
-            demand: monthlyDemand[0],
-            bill: monthlyBill[0]
+            supply: monthlySupply,
+            demand: monthlyDemand,
+            bill: monthlyBill
         });
     } catch (error) {
         console.error("Dashboard trends error:", error);
@@ -3447,7 +3552,7 @@ app.get("/api/dashboard/procurement-analysis", requireAuth, async (req, res) => 
             [year]
         );
 
-        res.json(procurementData[0]);
+        res.json(procurementData);
     } catch (error) {
         console.error("Procurement analysis error:", error);
         res.status(500).json({ error: "Failed to fetch procurement analysis" });
@@ -3467,7 +3572,7 @@ app.get("/api/dashboard/firm-analysis", requireAuth, async (req, res) => {
             [year]
         );
 
-        res.json(firmData[0]);
+        res.json(firmData);
     } catch (error) {
         console.error("Firm analysis error:", error);
         res.status(500).json({ error: "Failed to fetch firm analysis" });

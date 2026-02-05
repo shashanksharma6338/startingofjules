@@ -14,15 +14,14 @@ require('dotenv').config();
 const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
-    host: process.env.DB_HOST || "sql.freedb.tech",
-    user: process.env.DB_USER || "freedb_sharma",
-    password: process.env.DB_PASSWORD || "mvvbvpD?mgEfqQ2",
-    database: process.env.DB_NAME || "freedb_shashank",
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "",
+    database: process.env.DB_NAME || "mmg_db",
     connectionLimit: 50, // Reduced for better resource management
-    acquireTimeout: 30000, // Faster timeout for high concurrency
-    timeout: 30000,
+    waitForConnections: true,
+    connectTimeout: 30000,
     queueLimit: 150, // Accommodate 150 homepage users
-    reconnect: true,
     idleTimeout: 180000, // 3 minutes idle timeout
     maxIdle: 25, // Keep fewer idle connections
     supportBigNumbers: true,
